@@ -11,16 +11,16 @@
 #include "maxOptimizer.h"
 
 std::shared_ptr<ParameterLink<int>> maxOptimizer::tournamentSizePL =
-	Parameters::register_parameter("OPTIMIZER_TOURNAMENT-tournamentSize", 5, "number of organisims compaired in each tournament");
+	Parameters::register_parameter("OPTIMIZER_MAX-tournamentSize", 5, "number of organisims compaired in each tournament");
 
 std::shared_ptr<ParameterLink<int>> maxOptimizer::numberParentsPL =
-	Parameters::register_parameter("OPTIMIZER_TOURNAMENT-numberParents", 1, "number of parents used to produce offspring (each parent will be selected by a unique tournament)");
+	Parameters::register_parameter("OPTIMIZER_MAX-numberParents", 1, "number of parents used to produce offspring (each parent will be selected by a unique tournament)");
 
 std::shared_ptr<ParameterLink<bool>> maxOptimizer::minimizeErrorPL =
-Parameters::register_parameter("OPTIMIZER_TOURNAMENT-minimizeError", false, "if true, Tournament Optimizer will select lower optimizeValues");
+Parameters::register_parameter("OPTIMIZER_MAX-minimizeError", false, "if true, Tournament Optimizer will select lower optimizeValues");
 
 std::shared_ptr<ParameterLink<std::string>> maxOptimizer::optimizeValuePL =
-	Parameters::register_parameter("OPTIMIZER_TOURNAMENT-optimizeValue", (std::string) "DM_AVE[score]", "value to optimize (MTree)");
+	Parameters::register_parameter("OPTIMIZER_MAX-optimizeValue", (std::string) "DM_AVE[score]", "value to optimize (MTree)");
 
 
 int maxOptimizer::selectParent(int tournamentSize, bool minimizeError, std::vector<double> scores, int popSize){
