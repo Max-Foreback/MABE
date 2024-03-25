@@ -58,6 +58,9 @@ public:
     maxWorld(shared_ptr<ParametersTable> PT);
     virtual ~maxWorld() = default;
 
+    std::string brain1Name;
+    std::string brain2Name;
+
     class Resource{
     public:
         int kind;
@@ -65,12 +68,20 @@ public:
         int f2;
     };
 
+    class Tracker{
+    public:
+        std::map<std::string, int> data;
+
+    };
+
+    Tracker createTracker();
+
     virtual auto evaluate(map<string, shared_ptr<Group>>& /*groups*/, int /*analyze*/, int /*visualize*/, int /*debug*/) -> void override;
     std::vector<int> genAgentPositions();
     std::vector<int> genAgentOrientations();
     std::vector<Resource> genTaskWorld(std::vector<int> positions);
     std::vector<int> getPerception(const int pos, const std::vector<Resource>& world, const int agentOrient, const std::vector<int> &positions);
-    int forageTask(std::vector<std::shared_ptr<AbstractBrain>> brains, std::vector<Resource> &world, std::vector<int> &positions, std::vector<int> &orientations, bool printing);
+    Tracker forageTask(std::vector<std::tuple<std::shared_ptr<AbstractBrain>, std::string>> brainInfo, std::vector<Resource> &world, std::vector<int> &positions, std::vector<int> &orientations, bool printing);
     int calcAgentMove(const int pos, const int orient);
     int calcAgentRotate(const int orient, const int lMotor, const int rMotor);
     int mutateComp(int oldAgent1Num);

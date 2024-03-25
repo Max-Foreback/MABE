@@ -1,5 +1,5 @@
 #include "maxWorld.h"
-//#include "../code/Utilities.h"
+//#include "../../Utilities/Utilities.h"
 
 shared_ptr<ParameterLink<int>> maxWorld::evaluationsPerGenerationPL =
     Parameters::register_parameter("WORLD_max-evaluationsPerGeneration", 5,
@@ -68,12 +68,27 @@ maxWorld::maxWorld(shared_ptr<ParametersTable> PT) : AbstractWorld(PT) {
         initialAgent1 = initialAgent1PL->get(PT);
     }
     
-
-    // popFileColumns tell MABE what data should be saved to pop.csv files
     
+    // popFileColumns tell MABE what data should be saved to pop.csv files
+    auto myPT = Parameters::root->getTable("brain::");
+    auto myPT2 = Parameters::root->getTable("brain2::");
+    brain1Name = myPT->lookupString("BRAIN-brainType") + "1";
+    brain2Name = myPT2->lookupString("BRAIN-brainType") + "2";
+
 	popFileColumns.clear();
     popFileColumns.push_back("score");
     popFileColumns.push_back("brain1Num");
+    popFileColumns.push_back(brain1Name + "_Resource" + std::to_string(taskOneID) + "_Completed");
+    popFileColumns.push_back(brain1Name + "_Resource" + std::to_string(taskOneID) + "_Attempted");
+
+    popFileColumns.push_back(brain1Name + "_Resource" + std::to_string(taskTwoID) + "_Completed");
+    popFileColumns.push_back(brain1Name + "_Resource" + std::to_string(taskTwoID) + "_Attempted");
+
+    popFileColumns.push_back(brain2Name + "_Resource" + std::to_string(taskOneID) + "_Completed");
+    popFileColumns.push_back(brain2Name + "_Resource" + std::to_string(taskOneID) + "_Attempted");
+    
+    popFileColumns.push_back(brain2Name + "_Resource" + std::to_string(taskTwoID) + "_Completed");
+    popFileColumns.push_back(brain2Name + "_Resource" + std::to_string(taskTwoID) + "_Attempted");
 }
 
 //TODO add these to header file?
@@ -181,15 +196,17 @@ maxWorld::Resource createResource(int k){
 int calcTask(int in1, maxWorld::Resource r){
     switch(r.kind){
         case ID_XOR:{
-            //temp 10
             return (in1 == r.f1 ^ r.f2) ? 5 : 0;
             }break;
         case ID_linReg:{
-            double diff = in1 - static_cast<double>((r.f1 * r.f2) + (r.f1 - r.f2));
-            return (diff < 1000.0) ? 1 : 0;
+            // Used in buffet method
+            //double diff = in1 - static_cast<double>((r.f1 * r.f2) + (r.f1 - r.f2));
+            double diff = (in1 - static_cast<double>(r.f1 * r.f2));
+            double error = pow(diff, 2);
+            return (error < 1.0) ? 5 : -1;
             }break;
         case ID_AND:{
-            return (in1 == r.f1 & r.f2) ? 1 : 0;
+            return (in1 == r.f1 & r.f2) ? 5 : -1;
             }break;
         case ID_FREE:{
             return 1;
@@ -218,7 +235,7 @@ std::vector<bool> maxWorld::binarizeInputs(const std::vector<int>& agentPercepti
         //task1, task2, wall
         binaryIns.push_back(agentPerception[i] == taskOneID);
         binaryIns.push_back(agentPerception[i] == taskTwoID);
-        //nvm two idc, okay maybe i do. bruh
+        //nvm two idc
         //binaryIns.push_back(agentPerception[i] == wall_val);
     }
     //Does the agent see a wall in the front sensor?
@@ -273,16 +290,17 @@ auto maxWorld::evaluate(map<string, shared_ptr<Group>>& groups, int analyze, int
         // For every evaluation
         for(int j = 0; j < evaluationsPerGeneration; j++){
             // clear the brain - resets brain state including memory
-            //brain->resetBrain();
-            
-            std::vector<std::shared_ptr<AbstractBrain>> brains;
+            brain->resetBrain();
+            brain2->resetBrain();
+            std::vector<std::tuple<std::shared_ptr<AbstractBrain>, std::string>> brainInfo;
+
             for(int q = 0; q < numAgents; q++){
                 //Add brains proportional to number of agents that will have them 
                 if(q < brain1Num){
-                    brains.push_back(brain->makeCopy(brain->PT));
+                    brainInfo.push_back(std::make_tuple(brain->makeCopy(brain->PT), brain1Name));
                 }
                 else{
-                    brains.push_back(brain2->makeCopy(brain2->PT));
+                    brainInfo.push_back(std::make_tuple(brain2->makeCopy(brain2->PT), brain2Name));
                 }
             }
             //Get copys for this swarm
@@ -290,10 +308,13 @@ auto maxWorld::evaluate(map<string, shared_ptr<Group>>& groups, int analyze, int
             std::vector<int> orientations = initOrientationsAll[j];
             std::vector<maxWorld::Resource> world = initWorldAll[j];
             
-            int score = forageTask(brains, world, positions, orientations, false);
+            maxWorld::Tracker tracker = forageTask(brainInfo, world, positions, orientations, false);
             
-            org->dataMap.append("score", score);
-            //scores.push_back(score);
+            for (const auto& item : tracker.data) {
+                // Append key-value pairs to the new map
+                org->dataMap.append(item.first, item.second);
+                //std::cout << item.first << item.second << std::endl;
+            }
         }
     }
     if(Global::update==Global::updatesPL->get()){
@@ -330,7 +351,7 @@ std::vector<int> maxWorld::genAgentPositions(){
 }
 
 std::vector<int> maxWorld::genAgentOrientations(){
-    //FOr now 4 directions, 0=up, 1=left, 2=down, 3=right
+    //For now 4 directions, 0=up, 1=left, 2=down, 3=right
     std::vector<int> orientations(numAgents);
     for(int &o : orientations){
         o = Random::getInt(0, 3);
@@ -428,8 +449,27 @@ std::vector<int> maxWorld::getPerception(const int pos, const std::vector<maxWor
     return perception;
 }
 
-int maxWorld::forageTask(std::vector<std::shared_ptr<AbstractBrain>> brains, std::vector<maxWorld::Resource> &world, std::vector<int> &positions, std::vector<int> &orientations, bool printing){
-    int score = 0;
+maxWorld::Tracker maxWorld::createTracker() {
+    maxWorld::Tracker t;
+
+    t.data["score"] = 0;
+    t.data[brain1Name + "_Resource" + std::to_string(taskOneID) + "_Completed"] = 0;
+    t.data[brain1Name + "_Resource" + std::to_string(taskOneID) + "_Attempted"] = 0;
+
+    t.data[brain1Name + "_Resource" + std::to_string(taskTwoID) + "_Completed"] = 0;
+    t.data[brain1Name + "_Resource" + std::to_string(taskTwoID) + "_Attempted"] = 0;
+
+    t.data[brain2Name + "_Resource" + std::to_string(taskOneID) + "_Completed"] = 0;
+    t.data[brain2Name + "_Resource" + std::to_string(taskOneID) + "_Attempted"] = 0;
+
+    t.data[brain2Name + "_Resource" + std::to_string(taskTwoID) + "_Completed"] = 0;
+    t.data[brain2Name + "_Resource" + std::to_string(taskTwoID) + "_Attempted"] = 0;
+    return t;
+};
+
+maxWorld::Tracker maxWorld::forageTask(std::vector<std::tuple<std::shared_ptr<AbstractBrain>, std::string>> brainInfo, std::vector<maxWorld::Resource> &world, std::vector<int> &positions, std::vector<int> &orientations, bool printing){
+    //tracker will store some stats
+    maxWorld::Tracker tracker = createTracker();
 
     //Main foraging loop for a single swarm
     for (size_t j = 0; j < timesteps; j++){
@@ -442,7 +482,11 @@ int maxWorld::forageTask(std::vector<std::shared_ptr<AbstractBrain>> brains, std
             waitingAgents.erase(waitingAgents.begin());
             int curr_agent_pos = positions[curr_agent_ID];
             int curr_agent_orient = orientations[curr_agent_ID];
-            std::shared_ptr<AbstractBrain> brain = brains[curr_agent_ID];
+
+            auto& info = brainInfo[curr_agent_ID]; 
+            std::shared_ptr<AbstractBrain> brain = std::get<0>(info);
+            std::string brainName = std::get<1>(info);
+            Resource r = world[curr_agent_pos];
 
             //kind front, kind front2, kind right, kind left, kind curr, in1, in2
             std::vector<int> agentPerception = getPerception(curr_agent_pos, world, curr_agent_orient, positions);
@@ -465,9 +509,12 @@ int maxWorld::forageTask(std::vector<std::shared_ptr<AbstractBrain>> brains, std
             // run a brain update (i.e. ask the brain to convert it's inputs into outputs)
             brain->update();
 
-            double move1 = brain->readOutput(0);
-            double move2 = brain->readOutput(1);
-            double taskr = brain->readOutput(2);
+            int move1 = Bit(brain->readOutput(0));
+            int move2 = Bit(brain->readOutput(1));
+            auto taskr = (r.kind != ID_linReg) ? Bit(brain->readOutput(2)) : brain->readOutput(2);
+            //Allow brains to evolve to NOT solve a task, to not incur penalty
+            int rejectSolve = Bit(brain->readOutput(3));
+
             // update agent or world state here
             // move if going forward, try to solve task if staying still or rotating 
             if(move1 == 1 && move2 == 1){
@@ -476,10 +523,18 @@ int maxWorld::forageTask(std::vector<std::shared_ptr<AbstractBrain>> brains, std
             else{
                 orientations[curr_agent_ID] = calcAgentRotate(curr_agent_orient, move1, move2);
                 //Try to solve task
-                int s = calcTask(taskr, world[curr_agent_pos]);
-                if(s != 0){
-                    score += s;
-                    world[curr_agent_pos] = createResource(empty_val);
+                if(!rejectSolve){
+                    if(r.kind != empty_val){
+                        tracker.data[brainName + "_Resource" + std::to_string(r.kind) + "_Attempted"] += 1;
+                    }
+
+                    int s = calcTask(taskr, world[curr_agent_pos]);
+                    tracker.data["score"] += s;
+                    if(s > 0){
+                        //tracker.data["score"] += s;
+                        world[curr_agent_pos] = createResource(empty_val);
+                        tracker.data[brainName + "_Resource" + std::to_string(r.kind) + "_Completed"] += 1;
+                    }
                 }
             }
         } 
@@ -487,7 +542,7 @@ int maxWorld::forageTask(std::vector<std::shared_ptr<AbstractBrain>> brains, std
             printWorld(positions, world, xDim, yDim, orientations);
         }
     }
-    return score;
+    return tracker;
 }
 
 //Currently calcs agents desired move
@@ -557,26 +612,27 @@ void maxWorld::showBestTaskBrain(std::shared_ptr<AbstractBrain> brain, std::shar
     std::vector<maxWorld::Resource> world = genTaskWorld(positions);
     brain->resetBrain();
     brain2->resetBrain();
-    std::vector<std::shared_ptr<AbstractBrain>> brains;
+    std::vector<std::tuple<std::shared_ptr<AbstractBrain>, std::string>> brainInfo;
+
     for(int q = 0; q < numAgents; q++){
         //Add brains proportional to number of agents that will have them 
         if(q < bestNumAgent1){
-            brains.push_back(brain->makeCopy(brain->PT));
+            brainInfo.push_back(std::make_tuple(brain->makeCopy(brain->PT), brain1Name));
         }
         else{
-            brains.push_back(brain2->makeCopy(brain2->PT));
+            brainInfo.push_back(std::make_tuple(brain2->makeCopy(brain2->PT), brain2Name));
         }
     }
     printWorld(positions, world, xDim, yDim, orientations);
-    int score = forageTask(brains, world, positions, orientations, true);
-    std::cout << "Score " << score << std::endl;
+    maxWorld::Tracker tracker = forageTask(brainInfo, world, positions, orientations, true);
+    std::cout << "Score " << tracker.data["score"] << std::endl;
 }
 
 // // the requiredGroups function lets MABE know how to set up populations of organisms that this world needs
 auto maxWorld::requiredGroups() -> unordered_map<string,unordered_set<string>> {
     //4 sensors, 2 binary resource IDs each. Wall in front sensor. Task ins. 
     // 4 x 2 + 1 + 2 
-	return { { groupName, { "B:brain::,11,3", "B:brain2::,11,3" } } };
+	return { { groupName, { "B:brain::,11,4", "B:brain2::,11,4" } } };
         
         // this tells MABE to make a group called "root::" with a brain called "root::" that takes 2 inputs and has 1 output
         // "root::" here also indicates the namespace for the parameters used to define these elements.
