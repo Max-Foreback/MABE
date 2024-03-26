@@ -45,6 +45,14 @@ shared_ptr<ParameterLink<int>> maxWorld::taskTwoIDPL =
     Parameters::register_parameter("WORLD_max-taskTwoID", 3,
     "ID of task2, defaults to 3 (AND)");
 
+shared_ptr<ParameterLink<int>> maxWorld::taskRewardPL =
+    Parameters::register_parameter("WORLD_max-taskReward", 5,
+    "Reward for solving a task and collecting a resource");
+
+shared_ptr<ParameterLink<int>> maxWorld::taskPenaltyPL =
+    Parameters::register_parameter("WORLD_max-taskPenalty", 0,
+    "Penalty for attempting to solve a task, and failing");
+
 
 maxWorld::maxWorld(shared_ptr<ParametersTable> PT) : AbstractWorld(PT) {
     
@@ -60,6 +68,8 @@ maxWorld::maxWorld(shared_ptr<ParametersTable> PT) : AbstractWorld(PT) {
     mRate = compMutationRatePL->get(PT);
     taskOneID = taskOneIDPL->get(PT);
     taskTwoID = taskTwoIDPL->get(PT);
+    taskReward = taskRewardPL->get(PT);
+    taskPenalty = taskPenaltyPL->get(PT);
     //if not specified, set to half the swarm
     if (initialAgent1PL->get(PT) == -1){
         initialAgent1 = static_cast<int>(numAgents/2);
@@ -193,20 +203,20 @@ maxWorld::Resource createResource(int k){
     return r;
 }
 
-int calcTask(int in1, maxWorld::Resource r){
+int maxWorld::calcTask(int in1, maxWorld::Resource r){
     switch(r.kind){
         case ID_XOR:{
-            return (in1 == r.f1 ^ r.f2) ? 5 : 0;
+            return (in1 == r.f1 ^ r.f2) ? taskReward : taskPenalty;
             }break;
         case ID_linReg:{
             // Used in buffet method
             //double diff = in1 - static_cast<double>((r.f1 * r.f2) + (r.f1 - r.f2));
             double diff = (in1 - static_cast<double>(r.f1 * r.f2));
             double error = pow(diff, 2);
-            return (error < 1.0) ? 5 : -1;
+            return (error < 1.0) ? taskReward : taskPenalty;
             }break;
         case ID_AND:{
-            return (in1 == r.f1 & r.f2) ? 5 : -1;
+            return (in1 == r.f1 & r.f2) ? taskReward : taskPenalty;
             }break;
         case ID_FREE:{
             return 1;

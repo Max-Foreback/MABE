@@ -37,6 +37,8 @@ public:
     static shared_ptr<ParameterLink<int>> taskOneIDPL;
     static shared_ptr<ParameterLink<int>> taskTwoIDPL;
     static shared_ptr<ParameterLink<int>> initialAgent1PL;
+    static shared_ptr<ParameterLink<int>> taskRewardPL;
+    static shared_ptr<ParameterLink<int>> taskPenaltyPL;
 
     // a local variable used for faster access to the ParameterLink value
     int evaluationsPerGeneration;
@@ -48,6 +50,8 @@ public:
     int taskOneID;
     int taskTwoID;
     int initialAgent1;
+    int taskReward;
+    int taskPenalty;
     
     std::vector<double> rProp;
     double mRate;
@@ -79,6 +83,7 @@ public:
     virtual auto evaluate(map<string, shared_ptr<Group>>& /*groups*/, int /*analyze*/, int /*visualize*/, int /*debug*/) -> void override;
     std::vector<int> genAgentPositions();
     std::vector<int> genAgentOrientations();
+    int calcTask(int in1, maxWorld::Resource r);
     std::vector<Resource> genTaskWorld(std::vector<int> positions);
     std::vector<int> getPerception(const int pos, const std::vector<Resource>& world, const int agentOrient, const std::vector<int> &positions);
     Tracker forageTask(std::vector<std::tuple<std::shared_ptr<AbstractBrain>, std::string>> brainInfo, std::vector<Resource> &world, std::vector<int> &positions, std::vector<int> &orientations, bool printing);
