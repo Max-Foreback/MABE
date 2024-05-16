@@ -86,12 +86,13 @@ public:
     int calcTask(int in1, maxWorld::Resource r);
     std::vector<Resource> genTaskWorld(std::vector<int> positions);
     std::vector<int> getPerception(const int pos, const std::vector<Resource>& world, const int agentOrient, const std::vector<int> &positions);
-    Tracker forageTask(std::vector<std::tuple<std::shared_ptr<AbstractBrain>, std::string>> brainInfo, std::vector<Resource> &world, std::vector<int> &positions, std::vector<int> &orientations, bool printing);
+    Tracker forageTask(const std::vector<std::tuple<std::shared_ptr<AbstractBrain>, std::string>> brainInfo, std::vector<Resource> &world, std::vector<int> &positions, std::vector<int> &orientations, bool printing);
     int calcAgentMove(const int pos, const int orient);
     int calcAgentRotate(const int orient, const int lMotor, const int rMotor);
     int mutateComp(int oldAgent1Num);
     void showBestTaskBrain(std::shared_ptr<AbstractBrain> brain, std::shared_ptr<AbstractBrain> brain2, int bestNumAgent1);
     std::vector<bool> binarizeInputs(const std::vector<int>& agentPerception);
+    void spawnResource(std::vector<maxWorld::Resource> &world, const std::vector<int> &positions);
 
     virtual auto requiredGroups() -> unordered_map<string,unordered_set<string>> override;
 };

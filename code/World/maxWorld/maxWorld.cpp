@@ -6,11 +6,11 @@ shared_ptr<ParameterLink<int>> maxWorld::evaluationsPerGenerationPL =
     "how many times should each organism be tested in each generation?");
 
 shared_ptr<ParameterLink<int>> maxWorld::xDimPL =
-    Parameters::register_parameter("WORLD_max-xDim", 10,
+    Parameters::register_parameter("WORLD_max-xDim", 15,
     "Size of the world in x direction");
 
 shared_ptr<ParameterLink<int>> maxWorld::yDimPL =
-    Parameters::register_parameter("WORLD_max-yDim", 10,
+    Parameters::register_parameter("WORLD_max-yDim", 15,
     "Size of the world in y direction");
 
 shared_ptr<ParameterLink<bool>> maxWorld::verbosePL =
@@ -18,15 +18,15 @@ shared_ptr<ParameterLink<bool>> maxWorld::verbosePL =
     "Should the world print extra data?");
 
 shared_ptr<ParameterLink<int>> maxWorld::numTimestepsPL =
-    Parameters::register_parameter("WORLD_max-numTimesteps", 30,
+    Parameters::register_parameter("WORLD_max-numTimesteps", 200,
     "Number of timesteps agent(s) have to collect food");
 
 shared_ptr<ParameterLink<int>> maxWorld::numAgentsPL =
-    Parameters::register_parameter("WORLD_max-numAgents", 4,
+    Parameters::register_parameter("WORLD_max-numAgents", 8,
     "Number of agents per swarm");
 
 shared_ptr<ParameterLink<std::string>> maxWorld::resourcePropsPL =
-    Parameters::register_parameter("WORLD_max-resourceProp", (std::string) "0.5,0.0",
+    Parameters::register_parameter("WORLD_max-resourceProp", (std::string) "0.4,0.4",
     "Proportion of world that is resource at index.");
 
 shared_ptr<ParameterLink<double>> maxWorld::compMutationRatePL =
@@ -35,23 +35,23 @@ shared_ptr<ParameterLink<double>> maxWorld::compMutationRatePL =
 
 shared_ptr<ParameterLink<int>> maxWorld::initialAgent1PL =
     Parameters::register_parameter("WORLD_max-initialAgent1", -1,
-    "Number of initial agents the swarm starts with");
+    "Number of initial agents the swarm starts with. If -1, will default to numAgents/2");
 
 shared_ptr<ParameterLink<int>> maxWorld::taskOneIDPL =
     Parameters::register_parameter("WORLD_max-taskOneID", 1,
     "ID of task1, defaults to 1 (XOR)");
 
 shared_ptr<ParameterLink<int>> maxWorld::taskTwoIDPL =
-    Parameters::register_parameter("WORLD_max-taskTwoID", 3,
-    "ID of task2, defaults to 3 (AND)");
+    Parameters::register_parameter("WORLD_max-taskTwoID", 2,
+    "ID of task2, defaults to 2 (Symbolic Regression)");
 
 shared_ptr<ParameterLink<int>> maxWorld::taskRewardPL =
-    Parameters::register_parameter("WORLD_max-taskReward", 5,
+    Parameters::register_parameter("WORLD_max-taskReward", 1,
     "Reward for solving a task and collecting a resource");
 
 shared_ptr<ParameterLink<int>> maxWorld::taskPenaltyPL =
-    Parameters::register_parameter("WORLD_max-taskPenalty", 0,
-    "Penalty for attempting to solve a task, and failing");
+    Parameters::register_parameter("WORLD_max-taskPenalty", -2,
+    "Reward for attempting to solve a task, and failing");
 
 
 maxWorld::maxWorld(shared_ptr<ParametersTable> PT) : AbstractWorld(PT) {
@@ -143,23 +143,6 @@ void printWorld(const std::vector<int> positions, const std::vector<maxWorld::Re
             //Print resource type otherwise
             else {
                 std::cout << world[pos].kind << " ";
-                // switch(world[pos].kind){
-                //     case empty_val:
-                //     std::cout << '-';
-                //     break;
-                //     case ID_XOR:
-                //     std::cout << "*";
-                //     break;
-                //     case ID_linReg:
-                //     std::cout << "%";
-                //     break;
-                //     case ID_AND:
-                //     std::cout << "$";
-                //     break;
-                //     case ID_FREE:
-                //     std::cout << "f";
-                //     break;
-                // }
             }
         }
         // Start a new line for the next row
@@ -179,8 +162,8 @@ maxWorld::Resource createResource(int k){
             break;
         //LIN REG
         case ID_linReg:
-            r.f1 = Random::getInt(-2, 2);
-            r.f2 = Random::getInt(-2, 2);
+            r.f1 = Random::getInt(-5, 5);
+            r.f2 = Random::getInt(-5, 5);
             break;
         //AND 
         case ID_AND:
@@ -211,9 +194,12 @@ int maxWorld::calcTask(int in1, maxWorld::Resource r){
         case ID_linReg:{
             // Used in buffet method
             //double diff = in1 - static_cast<double>((r.f1 * r.f2) + (r.f1 - r.f2));
-            double diff = (in1 - static_cast<double>(r.f1 * r.f2));
-            double error = pow(diff, 2);
-            return (error < 1.0) ? taskReward : taskPenalty;
+            //Simplified version for now
+            double diff= abs(in1 - static_cast<double>(r.f1 * r.f2));
+            //return (diff <= 10.0) ? taskReward : taskPenalty;
+            double std_dev = 100.0;
+            double weighted = exp(-0.5 * pow((diff) / std_dev, 2)) * taskReward;
+            return (diff <= 100.0) ? weighted : taskPenalty;
             }break;
         case ID_AND:{
             return (in1 == r.f1 & r.f2) ? taskReward : taskPenalty;
@@ -282,7 +268,7 @@ auto maxWorld::evaluate(map<string, shared_ptr<Group>>& groups, int analyze, int
     for (int i = 0; i < popSize; i++) {
         // create a shortcut to access the organism and organisms brain
         auto org = groups[groupName]->population[i];
-        //if it already exists, possibly mutate it
+        //if brain1Num already exists, possibly mutate it
         if(org->dataMap.fieldExists("brain1Num")){
             int numAgent1 = mutateComp(org->dataMap.getAverage("brain1Num"));
             org->dataMap.set("brain1Num", numAgent1);
@@ -477,7 +463,7 @@ maxWorld::Tracker maxWorld::createTracker() {
     return t;
 };
 
-maxWorld::Tracker maxWorld::forageTask(std::vector<std::tuple<std::shared_ptr<AbstractBrain>, std::string>> brainInfo, std::vector<maxWorld::Resource> &world, std::vector<int> &positions, std::vector<int> &orientations, bool printing){
+maxWorld::Tracker maxWorld::forageTask(const std::vector<std::tuple<std::shared_ptr<AbstractBrain>, std::string>> brainInfo, std::vector<maxWorld::Resource> &world, std::vector<int> &positions, std::vector<int> &orientations, bool printing){
     //tracker will store some stats
     maxWorld::Tracker tracker = createTracker();
 
@@ -540,9 +526,12 @@ maxWorld::Tracker maxWorld::forageTask(std::vector<std::tuple<std::shared_ptr<Ab
 
                     int s = calcTask(taskr, world[curr_agent_pos]);
                     tracker.data["score"] += s;
+                    //If successful (score > 0) 
                     if(s > 0){
-                        //tracker.data["score"] += s;
+                        //Set current position to empty
                         world[curr_agent_pos] = createResource(empty_val);
+                        //Create new random resource
+                        spawnResource(world, positions);
                         tracker.data[brainName + "_Resource" + std::to_string(r.kind) + "_Completed"] += 1;
                     }
                 }
@@ -609,11 +598,24 @@ int maxWorld::mutateComp(int oldAgent1Num){
         //choose to go up or down
         int newAgent1Num = (Random::getInt(0, 1) == 1) ? oldAgent1Num + 1 : oldAgent1Num - 1;
         //keep in bounds
-        return std::min(std::max(newAgent1Num, 0), numAgents);
+        return std::min(std::max(newAgent1Num, 1), numAgents - 1);
     }
     else{
         return oldAgent1Num;
     }
+}
+
+void maxWorld::spawnResource(std::vector<maxWorld::Resource> &world, const std::vector<int> &positions){
+    int choice = Random::getInt(0, 1);
+    std::vector<int> options = {taskOneID, taskTwoID};
+    int k = options[choice];
+    maxWorld::Resource r = createResource(k);
+    int pos = Random::getInt(0, xDim*yDim - 1);
+    //make sure generated position is not where an agent is currently, and also the position is empty
+    while(std::find(positions.begin(), positions.end(), pos) != positions.end() || world[pos].kind != empty_val){
+        pos = Random::getInt(0, xDim*yDim - 1);
+    }
+    world[pos] = r;
 }
 
 void maxWorld::showBestTaskBrain(std::shared_ptr<AbstractBrain> brain, std::shared_ptr<AbstractBrain> brain2, int bestNumAgent1){
@@ -634,8 +636,11 @@ void maxWorld::showBestTaskBrain(std::shared_ptr<AbstractBrain> brain, std::shar
         }
     }
     printWorld(positions, world, xDim, yDim, orientations);
-    maxWorld::Tracker tracker = forageTask(brainInfo, world, positions, orientations, true);
-    std::cout << "Score " << tracker.data["score"] << std::endl;
+    // maxWorld::Tracker tracker = forageTask(brainInfo, world, positions, orientations, true);
+    // std::cout << "Tracker Contents:" << std::endl;
+    // for (const auto& pair : tracker.data) {
+    //     std::cout << pair.first << ": " << pair.second << std::endl;
+    // }
 }
 
 // // the requiredGroups function lets MABE know how to set up populations of organisms that this world needs
