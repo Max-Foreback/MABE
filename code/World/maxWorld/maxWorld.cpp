@@ -117,6 +117,9 @@ const int left = 1;
 const int down = 2;
 const int right = 3;
 
+//Lin reg range should be adjustable
+const int SR_MAX = 5;
+
 void printWorld(const std::vector<int> positions, const std::vector<maxWorld::Resource> world, int xDim, int yDim, const std::vector<int> orientations) {
     for (int y = 0; y < yDim; ++y) {
         for (int x = 0; x < xDim; ++x) {
@@ -162,8 +165,8 @@ maxWorld::Resource createResource(int k){
             break;
         //LIN REG
         case ID_linReg:
-            r.f1 = Random::getInt(-5, 5);
-            r.f2 = Random::getInt(-5, 5);
+            r.f1 = Random::getInt(-SR_MAX, SR_MAX);
+            r.f2 = Random::getInt(-SR_MAX, SR_MAX);
             break;
         //AND 
         case ID_AND:
@@ -186,26 +189,24 @@ maxWorld::Resource createResource(int k){
     return r;
 }
 
-int maxWorld::calcTask(int in1, maxWorld::Resource r){
+double maxWorld::calcTask(int out1, maxWorld::Resource r){
     switch(r.kind){
         case ID_XOR:{
-            return (in1 == r.f1 ^ r.f2) ? taskReward : taskPenalty;
+            return (out1 == r.f1 ^ r.f2) ? taskReward : taskPenalty;
             }break;
         case ID_linReg:{
-            // Used in buffet method
-            //double diff = in1 - static_cast<double>((r.f1 * r.f2) + (r.f1 - r.f2));
-            //Simplified version for now
-            double diff= abs(in1 - static_cast<double>(r.f1 * r.f2));
-            //return (diff <= 10.0) ? taskReward : taskPenalty;
-            double std_dev = 100.0;
-            double weighted = exp(-0.5 * pow((diff) / std_dev, 2)) * taskReward;
-            return (diff <= 100.0) ? weighted : taskPenalty;
+            double diff = abs(out1 - static_cast<double>(r.f1 * r.f2));
+            double threshold = 100.0;
+            if (diff < 0.01){
+                return taskReward;
+            }
+            return (diff < threshold) ? 0 : taskPenalty;
             }break;
         case ID_AND:{
-            return (in1 == r.f1 & r.f2) ? taskReward : taskPenalty;
+            return (out1 == r.f1 & r.f2) ? taskReward : taskPenalty;
             }break;
         case ID_FREE:{
-            return 1;
+            return taskReward;
             }break;
         case empty_val:{
             return 0;
@@ -448,7 +449,7 @@ std::vector<int> maxWorld::getPerception(const int pos, const std::vector<maxWor
 maxWorld::Tracker maxWorld::createTracker() {
     maxWorld::Tracker t;
 
-    t.data["score"] = 0;
+    t.data["score"] = 0.0;
     t.data[brain1Name + "_Resource" + std::to_string(taskOneID) + "_Completed"] = 0;
     t.data[brain1Name + "_Resource" + std::to_string(taskOneID) + "_Attempted"] = 0;
 
@@ -524,7 +525,7 @@ maxWorld::Tracker maxWorld::forageTask(const std::vector<std::tuple<std::shared_
                         tracker.data[brainName + "_Resource" + std::to_string(r.kind) + "_Attempted"] += 1;
                     }
 
-                    int s = calcTask(taskr, world[curr_agent_pos]);
+                    double s = calcTask(taskr, world[curr_agent_pos]);
                     tracker.data["score"] += s;
                     //If successful (score > 0) 
                     if(s > 0){
@@ -636,11 +637,11 @@ void maxWorld::showBestTaskBrain(std::shared_ptr<AbstractBrain> brain, std::shar
         }
     }
     printWorld(positions, world, xDim, yDim, orientations);
-    // maxWorld::Tracker tracker = forageTask(brainInfo, world, positions, orientations, true);
-    // std::cout << "Tracker Contents:" << std::endl;
-    // for (const auto& pair : tracker.data) {
-    //     std::cout << pair.first << ": " << pair.second << std::endl;
-    // }
+    maxWorld::Tracker tracker = forageTask(brainInfo, world, positions, orientations, true);
+    std::cout << "Tracker Contents:" << std::endl;
+    for (const auto& pair : tracker.data) {
+        std::cout << pair.first << ": " << pair.second << std::endl;
+    }
 }
 
 // // the requiredGroups function lets MABE know how to set up populations of organisms that this world needs

@@ -83,7 +83,7 @@ public:
     virtual auto evaluate(map<string, shared_ptr<Group>>& /*groups*/, int /*analyze*/, int /*visualize*/, int /*debug*/) -> void override;
     std::vector<int> genAgentPositions();
     std::vector<int> genAgentOrientations();
-    int calcTask(int in1, maxWorld::Resource r);
+    double calcTask(int out1, maxWorld::Resource r);
     std::vector<Resource> genTaskWorld(std::vector<int> positions);
     std::vector<int> getPerception(const int pos, const std::vector<Resource>& world, const int agentOrient, const std::vector<int> &positions);
     Tracker forageTask(const std::vector<std::tuple<std::shared_ptr<AbstractBrain>, std::string>> brainInfo, std::vector<Resource> &world, std::vector<int> &positions, std::vector<int> &orientations, bool printing);
