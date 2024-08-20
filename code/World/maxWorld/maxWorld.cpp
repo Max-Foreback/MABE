@@ -2,7 +2,7 @@
 //#include "../../Utilities/Utilities.h"
 
 shared_ptr<ParameterLink<int>> maxWorld::evaluationsPerGenerationPL =
-    Parameters::register_parameter("WORLD_max-evaluationsPerGeneration", 5,
+    Parameters::register_parameter("WORLD_max-evaluationsPerGeneration", 3,
     "how many times should each organism be tested in each generation?");
 
 shared_ptr<ParameterLink<int>> maxWorld::xDimPL =
@@ -18,11 +18,11 @@ shared_ptr<ParameterLink<bool>> maxWorld::verbosePL =
     "Should the world print extra data?");
 
 shared_ptr<ParameterLink<int>> maxWorld::numTimestepsPL =
-    Parameters::register_parameter("WORLD_max-numTimesteps", 200,
+    Parameters::register_parameter("WORLD_max-numTimesteps", 300,
     "Number of timesteps agent(s) have to collect food");
 
 shared_ptr<ParameterLink<int>> maxWorld::numAgentsPL =
-    Parameters::register_parameter("WORLD_max-numAgents", 8,
+    Parameters::register_parameter("WORLD_max-numAgents", 10,
     "Number of agents per swarm");
 
 shared_ptr<ParameterLink<std::string>> maxWorld::resourcePropsPL =
@@ -53,6 +53,9 @@ shared_ptr<ParameterLink<int>> maxWorld::taskPenaltyPL =
     Parameters::register_parameter("WORLD_max-taskPenalty", -2,
     "Reward for attempting to solve a task, and failing");
 
+shared_ptr<ParameterLink<double>> maxWorld::r1replaceRatePL =
+    Parameters::register_parameter("WORLD_max-r1replaceRate", .5,
+    "Proportion of replaced rewards that will be resource 1");
 
 maxWorld::maxWorld(shared_ptr<ParametersTable> PT) : AbstractWorld(PT) {
     
@@ -70,6 +73,7 @@ maxWorld::maxWorld(shared_ptr<ParametersTable> PT) : AbstractWorld(PT) {
     taskTwoID = taskTwoIDPL->get(PT);
     taskReward = taskRewardPL->get(PT);
     taskPenalty = taskPenaltyPL->get(PT);
+    r1replaceRate = r1replaceRatePL->get(PT);
     //if not specified, set to half the swarm
     if (initialAgent1PL->get(PT) == -1){
         initialAgent1 = static_cast<int>(numAgents/2);
@@ -224,20 +228,14 @@ double maxWorld::calcTask(int out1, maxWorld::Resource r){
 std::vector<bool> maxWorld::binarizeInputs(const std::vector<int>& agentPerception){
     std::vector<bool> binaryIns;
     //for all 4 outward sensors, front, front2, right, left
-    //# for now only 3 
-    for(int i = 0; i < 3; i++){
-        //// for all 5 possible values in the sensor
-        //// XOR, linReg, AND, agent, wall
-        //To make things easier, lets just do 3
-        //task1, task2, wall
+    for(int i = 0; i < 4; i++){
+        //task1, task2
         binaryIns.push_back(agentPerception[i] == taskOneID);
         binaryIns.push_back(agentPerception[i] == taskTwoID);
-        //nvm two idc
-        //binaryIns.push_back(agentPerception[i] == wall_val);
     }
     //Does the agent see a wall in the front sensor?
     binaryIns.push_back(agentPerception[0] == wall_val);
-    //Add currentPos sensor (cant be wall)
+    //Add currentPos sensor
     binaryIns.push_back(agentPerception[4] == taskOneID);
     binaryIns.push_back(agentPerception[4] == taskTwoID); 
 
@@ -531,7 +529,7 @@ maxWorld::Tracker maxWorld::forageTask(const std::vector<std::tuple<std::shared_
                     if(s > 0){
                         //Set current position to empty
                         world[curr_agent_pos] = createResource(empty_val);
-                        //Create new random resource
+                        //Create new random resource according to r1replaceRate
                         spawnResource(world, positions);
                         tracker.data[brainName + "_Resource" + std::to_string(r.kind) + "_Completed"] += 1;
                     }
@@ -607,10 +605,9 @@ int maxWorld::mutateComp(int oldAgent1Num){
 }
 
 void maxWorld::spawnResource(std::vector<maxWorld::Resource> &world, const std::vector<int> &positions){
-    int choice = Random::getInt(0, 1);
-    std::vector<int> options = {taskOneID, taskTwoID};
-    int k = options[choice];
-    maxWorld::Resource r = createResource(k);
+    double sample = Random::getDouble(0.0, 1.0);
+    int choice = (sample < r1replaceRate) ? taskOneID : taskTwoID; 
+    maxWorld::Resource r = createResource(choice);
     int pos = Random::getInt(0, xDim*yDim - 1);
     //make sure generated position is not where an agent is currently, and also the position is empty
     while(std::find(positions.begin(), positions.end(), pos) != positions.end() || world[pos].kind != empty_val){
@@ -648,7 +645,7 @@ void maxWorld::showBestTaskBrain(std::shared_ptr<AbstractBrain> brain, std::shar
 auto maxWorld::requiredGroups() -> unordered_map<string,unordered_set<string>> {
     //4 sensors, 2 binary resource IDs each. Wall in front sensor. Task ins. 
     // 4 x 2 + 1 + 2 
-	return { { groupName, { "B:brain::,11,4", "B:brain2::,11,4" } } };
+	return { { groupName, { "B:brain::,13,4", "B:brain2::,13,4" } } };
         
         // this tells MABE to make a group called "root::" with a brain called "root::" that takes 2 inputs and has 1 output
         // "root::" here also indicates the namespace for the parameters used to define these elements.
