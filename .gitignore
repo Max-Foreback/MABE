@@ -8,3 +8,6 @@ work/
 
 # Ignore python's cache:
 __pycache__/
+
+*.ipynb
+*.zip
