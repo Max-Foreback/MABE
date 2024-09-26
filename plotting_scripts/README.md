@@ -1,0 +1,2 @@
+This directory holds plotting scripts used for the paper "Leveraging Heterogeneous Controller Substrates for Evolutionary Swarm Robotics"
+Most contain hardcoded paths, so modifications will be needed if you want to run them manually. 
