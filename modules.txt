@@ -2,10 +2,12 @@
   - Logic16
   - NBack
   - BlockCatch
-  + Test
+  - Test
   - PathFollow
+  - sans
   - TPM_GENERATOR
   - Berry
+  * Forage
 
 % Genome
   * Circular
@@ -18,11 +20,11 @@
 % Brain
   - Wire
   * CGP
-  - Markov
+  + Markov
   - LSTM
   - BiLog
   - ANN
-  - RNN
+  + RNN
   - Human
   - ConstantValues
 
@@ -30,5 +32,6 @@
   - Islands
   - Lexicase
   + Roulette
-  * Tournament
+  - Tournament
+  * Forage
 

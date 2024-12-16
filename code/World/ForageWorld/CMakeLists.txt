@@ -6,13 +6,13 @@
 
 ## the option command makes your module
 ## togglable in build settings
-option(enable_Optimizer_max "Enable Module maxOptimizer" OFF)
-if (enable_Optimizer_max)
+option(enable_World_Forage "Enable Module ForageWorld" OFF)
+if (enable_World_Forage)
 
   ## register_module() is a custom MABE function
   ## that registers your module and type with the
   ## rest of the build system
-  register_module(Optimizer max)
+  register_module(World Forage)
 
   ## target_sources is a standard cmake command
   ## to tell the compiler to treat a cpp files
@@ -21,8 +21,8 @@ if (enable_Optimizer_max)
   ## CMAKE_CURRENT_LIST_DIR is the locatoin of
   ## your module, so you should always use this
   ## to reference files in your module.
-  target_sources(${EXE} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/maxOptimizer.cpp)
-  target_sources(${EXE} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/maxOptimizer.h)
+  target_sources(${EXE} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/ForageWorld.cpp)
+  target_sources(${EXE} PRIVATE ${CMAKE_CURRENT_LIST_DIR}/ForageWorld.h)
   ## it will still work if you don't list the .h file, but the file won't show up in some IDE projects
 
   ## exapmle of a direct header include

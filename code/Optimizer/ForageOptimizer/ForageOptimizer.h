@@ -14,7 +14,7 @@
 #include <iostream>
 #include <sstream>
 
-class maxOptimizer : public AbstractOptimizer {
+class ForageOptimizer : public AbstractOptimizer {
 public:
 	static std::shared_ptr<ParameterLink<int>> tournamentSizePL; // TournamentSize
 	static std::shared_ptr<ParameterLink<int>> numberParentsPL; // number of parents (default 1, asexual)
@@ -28,7 +28,7 @@ public:
 
 	int selectParent(int tournamentSize, bool minimizeError, std::vector<double> scores, int popSize);
 
-	maxOptimizer(std::shared_ptr<ParametersTable> PT_ = nullptr);
+	ForageOptimizer(std::shared_ptr<ParametersTable> PT_ = nullptr);
 
 	virtual void optimize(std::vector<std::shared_ptr<Organism>> &population) override;
 };

@@ -1,63 +1,63 @@
-#include "maxWorld.h"
+#include "ForageWorld.h"
 //#include "../../Utilities/Utilities.h"
 
-shared_ptr<ParameterLink<int>> maxWorld::evaluationsPerGenerationPL =
-    Parameters::register_parameter("WORLD_max-evaluationsPerGeneration", 3,
+shared_ptr<ParameterLink<int>> ForageWorld::evaluationsPerGenerationPL =
+    Parameters::register_parameter("WORLD_Forage-evaluationsPerGeneration", 3,
     "how many times should each organism be tested in each generation?");
 
-shared_ptr<ParameterLink<int>> maxWorld::xDimPL =
-    Parameters::register_parameter("WORLD_max-xDim", 15,
+shared_ptr<ParameterLink<int>> ForageWorld::xDimPL =
+    Parameters::register_parameter("WORLD_Forage-xDim", 15,
     "Size of the world in x direction");
 
-shared_ptr<ParameterLink<int>> maxWorld::yDimPL =
-    Parameters::register_parameter("WORLD_max-yDim", 15,
+shared_ptr<ParameterLink<int>> ForageWorld::yDimPL =
+    Parameters::register_parameter("WORLD_Forage-yDim", 15,
     "Size of the world in y direction");
 
-shared_ptr<ParameterLink<bool>> maxWorld::verbosePL =
-    Parameters::register_parameter("WORLD_max-verbose", false,
+shared_ptr<ParameterLink<bool>> ForageWorld::verbosePL =
+    Parameters::register_parameter("WORLD_Forage-verbose", false,
     "Should the world print extra data?");
 
-shared_ptr<ParameterLink<int>> maxWorld::numTimestepsPL =
-    Parameters::register_parameter("WORLD_max-numTimesteps", 300,
+shared_ptr<ParameterLink<int>> ForageWorld::numTimestepsPL =
+    Parameters::register_parameter("WORLD_Forage-numTimesteps", 300,
     "Number of timesteps agent(s) have to collect food");
 
-shared_ptr<ParameterLink<int>> maxWorld::numAgentsPL =
-    Parameters::register_parameter("WORLD_max-numAgents", 10,
+shared_ptr<ParameterLink<int>> ForageWorld::numAgentsPL =
+    Parameters::register_parameter("WORLD_Forage-numAgents", 10,
     "Number of agents per swarm");
 
-shared_ptr<ParameterLink<std::string>> maxWorld::resourcePropsPL =
-    Parameters::register_parameter("WORLD_max-resourceProp", (std::string) "0.4,0.4",
+shared_ptr<ParameterLink<std::string>> ForageWorld::resourcePropsPL =
+    Parameters::register_parameter("WORLD_Forage-resourceProp", (std::string) "0.4,0.4",
     "Proportion of world that is resource at index.");
 
-shared_ptr<ParameterLink<double>> maxWorld::compMutationRatePL =
-    Parameters::register_parameter("WORLD_max-compMutationRate", 0.3,
+shared_ptr<ParameterLink<double>> ForageWorld::compMutationRatePL =
+    Parameters::register_parameter("WORLD_Forage-compMutationRate", 0.3,
     "Probability a swarm swaps one of its agents types");
 
-shared_ptr<ParameterLink<int>> maxWorld::initialAgent1PL =
-    Parameters::register_parameter("WORLD_max-initialAgent1", -1,
+shared_ptr<ParameterLink<int>> ForageWorld::initialAgent1PL =
+    Parameters::register_parameter("WORLD_Forage-initialAgent1", -1,
     "Number of initial agents the swarm starts with. If -1, will default to numAgents/2");
 
-shared_ptr<ParameterLink<int>> maxWorld::taskOneIDPL =
-    Parameters::register_parameter("WORLD_max-taskOneID", 1,
+shared_ptr<ParameterLink<int>> ForageWorld::taskOneIDPL =
+    Parameters::register_parameter("WORLD_Forage-taskOneID", 1,
     "ID of task1, defaults to 1 (XOR)");
 
-shared_ptr<ParameterLink<int>> maxWorld::taskTwoIDPL =
-    Parameters::register_parameter("WORLD_max-taskTwoID", 2,
+shared_ptr<ParameterLink<int>> ForageWorld::taskTwoIDPL =
+    Parameters::register_parameter("WORLD_Forage-taskTwoID", 2,
     "ID of task2, defaults to 2 (Symbolic Regression)");
 
-shared_ptr<ParameterLink<int>> maxWorld::taskRewardPL =
-    Parameters::register_parameter("WORLD_max-taskReward", 1,
+shared_ptr<ParameterLink<int>> ForageWorld::taskRewardPL =
+    Parameters::register_parameter("WORLD_Forage-taskReward", 1,
     "Reward for solving a task and collecting a resource");
 
-shared_ptr<ParameterLink<int>> maxWorld::taskPenaltyPL =
-    Parameters::register_parameter("WORLD_max-taskPenalty", -2,
+shared_ptr<ParameterLink<int>> ForageWorld::taskPenaltyPL =
+    Parameters::register_parameter("WORLD_Forage-taskPenalty", -2,
     "Reward for attempting to solve a task, and failing");
 
-shared_ptr<ParameterLink<double>> maxWorld::r1replaceRatePL =
-    Parameters::register_parameter("WORLD_max-r1replaceRate", .5,
+shared_ptr<ParameterLink<double>> ForageWorld::r1replaceRatePL =
+    Parameters::register_parameter("WORLD_Forage-r1replaceRate", .5,
     "Proportion of replaced rewards that will be resource 1");
 
-maxWorld::maxWorld(shared_ptr<ParametersTable> PT) : AbstractWorld(PT) {
+ForageWorld::ForageWorld(shared_ptr<ParametersTable> PT) : AbstractWorld(PT) {
     
     //localize a parameter value for faster access
     evaluationsPerGeneration = evaluationsPerGenerationPL->get(PT);
@@ -124,7 +124,7 @@ const int right = 3;
 //Lin reg range should be adjustable
 const int SR_MAX = 5;
 
-void printWorld(const std::vector<int> positions, const std::vector<maxWorld::Resource> world, int xDim, int yDim, const std::vector<int> orientations) {
+void printWorld(const std::vector<int> positions, const std::vector<ForageWorld::Resource> world, int xDim, int yDim, const std::vector<int> orientations) {
     for (int y = 0; y < yDim; ++y) {
         for (int x = 0; x < xDim; ++x) {
             int pos = y * xDim + x;
@@ -158,8 +158,8 @@ void printWorld(const std::vector<int> positions, const std::vector<maxWorld::Re
     std::cout << "\n\n";
 }
 
-maxWorld::Resource createResource(int k){
-    maxWorld::Resource r;
+ForageWorld::Resource createResource(int k){
+    ForageWorld::Resource r;
     r.kind = k;
     switch(k){
         //XOR
@@ -193,7 +193,7 @@ maxWorld::Resource createResource(int k){
     return r;
 }
 
-double maxWorld::calcTask(int out1, maxWorld::Resource r){
+double ForageWorld::calcTask(int out1, ForageWorld::Resource r){
     switch(r.kind){
         case ID_XOR:{
             return (out1 == r.f1 ^ r.f2) ? taskReward : taskPenalty;
@@ -225,7 +225,7 @@ double maxWorld::calcTask(int out1, maxWorld::Resource r){
 }
 
 //Binarize sensor inputs
-std::vector<bool> maxWorld::binarizeInputs(const std::vector<int>& agentPerception){
+std::vector<bool> ForageWorld::binarizeInputs(const std::vector<int>& agentPerception){
     std::vector<bool> binaryIns;
     //for all 4 outward sensors, front, front2, right, left
     for(int i = 0; i < 4; i++){
@@ -244,20 +244,20 @@ std::vector<bool> maxWorld::binarizeInputs(const std::vector<int>& agentPercepti
 
 // the evaluate function gets called every generation. evaluate should set values on organisms datamaps
 // that will be used by other parts of MABE for things like reproduction and archiving
-auto maxWorld::evaluate(map<string, shared_ptr<Group>>& groups, int analyze, int visualize, int debug) -> void {
+auto ForageWorld::evaluate(map<string, shared_ptr<Group>>& groups, int analyze, int visualize, int debug) -> void {
     //std::vector<int> scores;
     int popSize = groups[groupName]->population.size(); 
 
     //a set of starting conditions for this generation's evaluations
     std::vector<std::vector<int>> initPositionsAll;
     std::vector<std::vector<int>> initOrientationsAll;
-    std::vector<std::vector<maxWorld::Resource>> initWorldAll;
+    std::vector<std::vector<ForageWorld::Resource>> initWorldAll;
 
     for(int z = 0; z < evaluationsPerGeneration; z++){
         //Every agent in a swarm has a position, orientation, and brain, with matching indicies
         std::vector<int> initPositions = genAgentPositions();
         std::vector<int> initOrientations = genAgentOrientations();
-        std::vector<maxWorld::Resource> initWorld = genTaskWorld(initPositions);
+        std::vector<ForageWorld::Resource> initWorld = genTaskWorld(initPositions);
         initPositionsAll.push_back(initPositions);
         initOrientationsAll.push_back(initOrientations);
         initWorldAll.push_back(initWorld);
@@ -301,9 +301,9 @@ auto maxWorld::evaluate(map<string, shared_ptr<Group>>& groups, int analyze, int
             //Get copys for this swarm
             std::vector<int> positions = initPositionsAll[j];
             std::vector<int> orientations = initOrientationsAll[j];
-            std::vector<maxWorld::Resource> world = initWorldAll[j];
+            std::vector<ForageWorld::Resource> world = initWorldAll[j];
             
-            maxWorld::Tracker tracker = forageTask(brainInfo, world, positions, orientations, false);
+            ForageWorld::Tracker tracker = forageTask(brainInfo, world, positions, orientations, false);
             
             for (const auto& item : tracker.data) {
                 // Append key-value pairs to the new map
@@ -337,7 +337,7 @@ auto maxWorld::evaluate(map<string, shared_ptr<Group>>& groups, int analyze, int
 }
 
 //Generate positions (stored as integers) for each agent
-std::vector<int> maxWorld::genAgentPositions(){
+std::vector<int> ForageWorld::genAgentPositions(){
     std::vector<int> possiblePositions(xDim*yDim, 0);
     std::iota(possiblePositions.begin(), possiblePositions.end(), 0);
     std::shuffle(possiblePositions.begin(), possiblePositions.end(), Random::getCommonGenerator());
@@ -345,7 +345,7 @@ std::vector<int> maxWorld::genAgentPositions(){
     return possiblePositions;
 }
 
-std::vector<int> maxWorld::genAgentOrientations(){
+std::vector<int> ForageWorld::genAgentOrientations(){
     //For now 4 directions, 0=up, 1=left, 2=down, 3=right
     std::vector<int> orientations(numAgents);
     for(int &o : orientations){
@@ -354,9 +354,9 @@ std::vector<int> maxWorld::genAgentOrientations(){
     return orientations;
 }
 
-std::vector<maxWorld::Resource> maxWorld::genTaskWorld(std::vector<int> positions){
+std::vector<ForageWorld::Resource> ForageWorld::genTaskWorld(std::vector<int> positions){
         int size = xDim*yDim;
-        std::vector<maxWorld::Resource> world(size);
+        std::vector<ForageWorld::Resource> world(size);
 
         int numResource1 = static_cast<int>(rProp[0] * size);
         int numResource2 = static_cast<int>(rProp[1] * size);
@@ -376,7 +376,7 @@ std::vector<maxWorld::Resource> maxWorld::genTaskWorld(std::vector<int> position
         return world;
 }
 
-std::vector<int> maxWorld::getPerception(const int pos, const std::vector<maxWorld::Resource>& world, const int agentOrient, const std::vector<int> &positions){
+std::vector<int> ForageWorld::getPerception(const int pos, const std::vector<ForageWorld::Resource>& world, const int agentOrient, const std::vector<int> &positions){
     std::vector<int> perception;
     //(0, 0 is top left) 
     int x = pos % xDim;  // Get x-coordinate
@@ -444,8 +444,8 @@ std::vector<int> maxWorld::getPerception(const int pos, const std::vector<maxWor
     return perception;
 }
 
-maxWorld::Tracker maxWorld::createTracker() {
-    maxWorld::Tracker t;
+ForageWorld::Tracker ForageWorld::createTracker() {
+    ForageWorld::Tracker t;
 
     t.data["score"] = 0.0;
     t.data[brain1Name + "_Resource" + std::to_string(taskOneID) + "_Completed"] = 0;
@@ -462,9 +462,9 @@ maxWorld::Tracker maxWorld::createTracker() {
     return t;
 };
 
-maxWorld::Tracker maxWorld::forageTask(const std::vector<std::tuple<std::shared_ptr<AbstractBrain>, std::string>> brainInfo, std::vector<maxWorld::Resource> &world, std::vector<int> &positions, std::vector<int> &orientations, bool printing){
+ForageWorld::Tracker ForageWorld::forageTask(const std::vector<std::tuple<std::shared_ptr<AbstractBrain>, std::string>> brainInfo, std::vector<ForageWorld::Resource> &world, std::vector<int> &positions, std::vector<int> &orientations, bool printing){
     //tracker will store some stats
-    maxWorld::Tracker tracker = createTracker();
+    ForageWorld::Tracker tracker = createTracker();
 
     //Main foraging loop for a single swarm
     for (size_t j = 0; j < timesteps; j++){
@@ -544,7 +544,7 @@ maxWorld::Tracker maxWorld::forageTask(const std::vector<std::tuple<std::shared_
 }
 
 //Currently calcs agents desired move
-int maxWorld::calcAgentMove(const int pos, const int orient) {
+int ForageWorld::calcAgentMove(const int pos, const int orient) {
     int x = pos % xDim;  // Get current x-coordinate
     int y = pos / xDim;  // Get current y-coordinate
     switch(orient){
@@ -572,7 +572,7 @@ int maxWorld::calcAgentMove(const int pos, const int orient) {
 }
 
 //Currently calcs agents desired orientation change
-int maxWorld::calcAgentRotate(const int curr_orient, const int lMotor, const int rMotor) {
+int ForageWorld::calcAgentRotate(const int curr_orient, const int lMotor, const int rMotor) {
     int orient = curr_orient;
     if(lMotor > rMotor){
         orient -= 1;
@@ -591,7 +591,7 @@ int maxWorld::calcAgentRotate(const int curr_orient, const int lMotor, const int
 }
 
 
-int maxWorld::mutateComp(int oldAgent1Num){
+int ForageWorld::mutateComp(int oldAgent1Num){
     //if mutate
     if(Random::getDouble(0.0, 1.0) < mRate){
         //choose to go up or down
@@ -604,10 +604,10 @@ int maxWorld::mutateComp(int oldAgent1Num){
     }
 }
 
-void maxWorld::spawnResource(std::vector<maxWorld::Resource> &world, const std::vector<int> &positions){
+void ForageWorld::spawnResource(std::vector<ForageWorld::Resource> &world, const std::vector<int> &positions){
     double sample = Random::getDouble(0.0, 1.0);
     int choice = (sample < r1replaceRate) ? taskOneID : taskTwoID; 
-    maxWorld::Resource r = createResource(choice);
+    ForageWorld::Resource r = createResource(choice);
     int pos = Random::getInt(0, xDim*yDim - 1);
     //make sure generated position is not where an agent is currently, and also the position is empty
     while(std::find(positions.begin(), positions.end(), pos) != positions.end() || world[pos].kind != empty_val){
@@ -616,10 +616,10 @@ void maxWorld::spawnResource(std::vector<maxWorld::Resource> &world, const std::
     world[pos] = r;
 }
 
-void maxWorld::showBestTaskBrain(std::shared_ptr<AbstractBrain> brain, std::shared_ptr<AbstractBrain> brain2, int bestNumAgent1){
+void ForageWorld::showBestTaskBrain(std::shared_ptr<AbstractBrain> brain, std::shared_ptr<AbstractBrain> brain2, int bestNumAgent1){
     std::vector<int> positions = genAgentPositions();
     std::vector<int> orientations = genAgentOrientations();
-    std::vector<maxWorld::Resource> world = genTaskWorld(positions);
+    std::vector<ForageWorld::Resource> world = genTaskWorld(positions);
     brain->resetBrain();
     brain2->resetBrain();
     std::vector<std::tuple<std::shared_ptr<AbstractBrain>, std::string>> brainInfo;
@@ -634,7 +634,7 @@ void maxWorld::showBestTaskBrain(std::shared_ptr<AbstractBrain> brain, std::shar
         }
     }
     printWorld(positions, world, xDim, yDim, orientations);
-    maxWorld::Tracker tracker = forageTask(brainInfo, world, positions, orientations, true);
+    ForageWorld::Tracker tracker = forageTask(brainInfo, world, positions, orientations, true);
     std::cout << "Tracker Contents:" << std::endl;
     for (const auto& pair : tracker.data) {
         std::cout << pair.first << ": " << pair.second << std::endl;
@@ -642,7 +642,7 @@ void maxWorld::showBestTaskBrain(std::shared_ptr<AbstractBrain> brain, std::shar
 }
 
 // // the requiredGroups function lets MABE know how to set up populations of organisms that this world needs
-auto maxWorld::requiredGroups() -> unordered_map<string,unordered_set<string>> {
+auto ForageWorld::requiredGroups() -> unordered_map<string,unordered_set<string>> {
     //4 sensors, 2 binary resource IDs each. Wall in front sensor. Task ins. 
     // 4 x 2 + 1 + 2 
 	return { { groupName, { "B:brain::,13,4", "B:brain2::,13,4" } } };

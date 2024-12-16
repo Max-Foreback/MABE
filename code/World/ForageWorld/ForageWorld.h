@@ -22,7 +22,7 @@ using std::unordered_map;
 using std::unordered_set;
 using std::to_string;
 
-class maxWorld : public AbstractWorld {
+class ForageWorld : public AbstractWorld {
 
 public:
     // parameters for group and brain namespaces
@@ -39,6 +39,7 @@ public:
     static shared_ptr<ParameterLink<int>> initialAgent1PL;
     static shared_ptr<ParameterLink<int>> taskRewardPL;
     static shared_ptr<ParameterLink<int>> taskPenaltyPL;
+    static shared_ptr<ParameterLink<double>> r1replaceRatePL;
 
     // a local variable used for faster access to the ParameterLink value
     int evaluationsPerGeneration;
@@ -52,6 +53,7 @@ public:
     int initialAgent1;
     int taskReward;
     int taskPenalty;
+    double r1replaceRate;
     
     std::vector<double> rProp;
     double mRate;
@@ -59,8 +61,8 @@ public:
     std::string groupName = "root::";
     std::string brainName = "root::";
     
-    maxWorld(shared_ptr<ParametersTable> PT);
-    virtual ~maxWorld() = default;
+    ForageWorld(shared_ptr<ParametersTable> PT);
+    virtual ~ForageWorld() = default;
 
     std::string brain1Name;
     std::string brain2Name;
@@ -83,7 +85,7 @@ public:
     virtual auto evaluate(map<string, shared_ptr<Group>>& /*groups*/, int /*analyze*/, int /*visualize*/, int /*debug*/) -> void override;
     std::vector<int> genAgentPositions();
     std::vector<int> genAgentOrientations();
-    double calcTask(int out1, maxWorld::Resource r);
+    double calcTask(int out1, ForageWorld::Resource r);
     std::vector<Resource> genTaskWorld(std::vector<int> positions);
     std::vector<int> getPerception(const int pos, const std::vector<Resource>& world, const int agentOrient, const std::vector<int> &positions);
     Tracker forageTask(const std::vector<std::tuple<std::shared_ptr<AbstractBrain>, std::string>> brainInfo, std::vector<Resource> &world, std::vector<int> &positions, std::vector<int> &orientations, bool printing);
@@ -92,7 +94,7 @@ public:
     int mutateComp(int oldAgent1Num);
     void showBestTaskBrain(std::shared_ptr<AbstractBrain> brain, std::shared_ptr<AbstractBrain> brain2, int bestNumAgent1);
     std::vector<bool> binarizeInputs(const std::vector<int>& agentPerception);
-    void spawnResource(std::vector<maxWorld::Resource> &world, const std::vector<int> &positions);
+    void spawnResource(std::vector<ForageWorld::Resource> &world, const std::vector<int> &positions);
 
     virtual auto requiredGroups() -> unordered_map<string,unordered_set<string>> override;
 };

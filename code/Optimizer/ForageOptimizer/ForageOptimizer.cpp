@@ -8,22 +8,22 @@
 //     to view the full license, visit:
 //         github.com/Hintzelab/MABE/wiki/License
 
-#include "maxOptimizer.h"
+#include "ForageOptimizer.h"
 
-std::shared_ptr<ParameterLink<int>> maxOptimizer::tournamentSizePL =
+std::shared_ptr<ParameterLink<int>> ForageOptimizer::tournamentSizePL =
 	Parameters::register_parameter("OPTIMIZER_MAX-tournamentSize", 5, "number of organisims compaired in each tournament");
 
-std::shared_ptr<ParameterLink<int>> maxOptimizer::numberParentsPL =
+std::shared_ptr<ParameterLink<int>> ForageOptimizer::numberParentsPL =
 	Parameters::register_parameter("OPTIMIZER_MAX-numberParents", 1, "number of parents used to produce offspring (each parent will be selected by a unique tournament)");
 
-std::shared_ptr<ParameterLink<bool>> maxOptimizer::minimizeErrorPL =
+std::shared_ptr<ParameterLink<bool>> ForageOptimizer::minimizeErrorPL =
 Parameters::register_parameter("OPTIMIZER_MAX-minimizeError", false, "if true, Tournament Optimizer will select lower optimizeValues");
 
-std::shared_ptr<ParameterLink<std::string>> maxOptimizer::optimizeValuePL =
+std::shared_ptr<ParameterLink<std::string>> ForageOptimizer::optimizeValuePL =
 	Parameters::register_parameter("OPTIMIZER_MAX-optimizeValue", (std::string) "DM_AVE[score]", "value to optimize (MTree)");
 
 
-int maxOptimizer::selectParent(int tournamentSize, bool minimizeError, std::vector<double> scores, int popSize){
+int ForageOptimizer::selectParent(int tournamentSize, bool minimizeError, std::vector<double> scores, int popSize){
 	int winner, challanger;
 	winner = Random::getIndex(popSize);
 	for (int i = 0; i < tournamentSize - 1; i++) {
@@ -36,7 +36,7 @@ int maxOptimizer::selectParent(int tournamentSize, bool minimizeError, std::vect
 }
 
 
-maxOptimizer::maxOptimizer(std::shared_ptr<ParametersTable> PT_)
+ForageOptimizer::ForageOptimizer(std::shared_ptr<ParametersTable> PT_)
 	: AbstractOptimizer(PT_) {
 
 	tournamentSize = tournamentSizePL->get(PT);
@@ -56,7 +56,7 @@ maxOptimizer::maxOptimizer(std::shared_ptr<ParametersTable> PT_)
 	popFileColumns.push_back("optimizeValue");
 }
 
-void maxOptimizer::optimize(std::vector<std::shared_ptr<Organism>> &population) {
+void ForageOptimizer::optimize(std::vector<std::shared_ptr<Organism>> &population) {
 	auto popSize = population.size();
 
 	std::vector<double> scores(popSize, 0);

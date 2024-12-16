@@ -1,21 +1,10 @@
-# MABE
+# Leveraging Heterogeneous Controller Representations for Evolutionary Swarm Robotics
 
-Platform | CI Status
-:---------:|:---------
-OSX      | [![OSX](https://github.com/Hintzelab/MABE/workflows/C/C++%20CI/badge.svg)](https://github.com/Hintzelab/MABE/actions)
-Linux    | [![Linux](https://github.com/Hintzelab/MABE/workflows/C/C++%20CI/badge.svg)](https://github.com/Hintzelab/MABE/actions)
-Windows  | [![Windows](https://github.com/Hintzelab/MABE/workflows/C/C++%20CI/badge.svg)](https://github.com/Hintzelab/MABE/actions)
+To understand how to run the code from this paper, you'll need to understand how to run MABE. 
+A good starting point for that is the [MABE wiki](https://github.com/Hintzelab/MABE/wiki/)
 
-### For Documentation and help getting started [click here for the wiki](https://github.com/Hintzelab/MABE/wiki/)
+This paper uses the ForageWorld and ForageOptimizer files, in addtition to the Markov, CGP, and RNN brains.
 
-After that, you can get specific help at our [gitter community room](https://gitter.im/hintze-lab/MABE)
+Follow instructions from the MABE wiki to compile and run code, with configurations for your experiments set in the settings file of the work directory. 
 
-please do not commit your 'work' and 'build' directory, and also do not commit your xcode project file, only the folders that contain .cpp and .h files.<br>
-<br>
-
-Extra code can be found at the MABE_extras repository.
-
-Contributors to this project include<br>
-Initial Design and Managment: Arend Hintze<br>
-Development and Maintenance: Cliff Bohm<br>
-Development and Maintenance: Jory Schossau<br>
+For further inquiries, contact the corresponding author at foreba10@msu.edu
