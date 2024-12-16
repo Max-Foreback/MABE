@@ -105,7 +105,6 @@ ForageWorld::ForageWorld(shared_ptr<ParametersTable> PT) : AbstractWorld(PT) {
     popFileColumns.push_back(brain2Name + "_Resource" + std::to_string(taskTwoID) + "_Attempted");
 }
 
-//TODO add these to header file?
 //Sensors can have these values for a square on the grid
 const int wall_val = 11;
 const int agent_val = 10;
@@ -114,16 +113,16 @@ const int ID_linReg = 2;
 const int ID_AND = 3;
 const int ID_FREE = 4;
 const int empty_val = 0;
-//For now 4 orientations
 //Do not change vals, math for roatating depends on them
 const int up = 0;
 const int left = 1;
 const int down = 2;
 const int right = 3;
 
-//Lin reg range should be adjustable
+//Multiplication range should be adjustable
 const int SR_MAX = 5;
 
+//Depreciated helper function to print the world
 void printWorld(const std::vector<int> positions, const std::vector<ForageWorld::Resource> world, int xDim, int yDim, const std::vector<int> orientations) {
     for (int y = 0; y < yDim; ++y) {
         for (int x = 0; x < xDim; ++x) {
@@ -158,6 +157,7 @@ void printWorld(const std::vector<int> positions, const std::vector<ForageWorld:
     std::cout << "\n\n";
 }
 
+// create a resource with the associated resource ID
 ForageWorld::Resource createResource(int k){
     ForageWorld::Resource r;
     r.kind = k;
@@ -167,7 +167,7 @@ ForageWorld::Resource createResource(int k){
             r.f1 = Random::getInt(0, 1);
             r.f2 = Random::getInt(0, 1);
             break;
-        //LIN REG
+        //MULT
         case ID_linReg:
             r.f1 = Random::getInt(-SR_MAX, SR_MAX);
             r.f2 = Random::getInt(-SR_MAX, SR_MAX);
@@ -193,6 +193,7 @@ ForageWorld::Resource createResource(int k){
     return r;
 }
 
+// Calculate the reward or penalty given a task and a response from an agent
 double ForageWorld::calcTask(int out1, ForageWorld::Resource r){
     switch(r.kind){
         case ID_XOR:{
@@ -245,7 +246,6 @@ std::vector<bool> ForageWorld::binarizeInputs(const std::vector<int>& agentPerce
 // the evaluate function gets called every generation. evaluate should set values on organisms datamaps
 // that will be used by other parts of MABE for things like reproduction and archiving
 auto ForageWorld::evaluate(map<string, shared_ptr<Group>>& groups, int analyze, int visualize, int debug) -> void {
-    //std::vector<int> scores;
     int popSize = groups[groupName]->population.size(); 
 
     //a set of starting conditions for this generation's evaluations
@@ -312,6 +312,7 @@ auto ForageWorld::evaluate(map<string, shared_ptr<Group>>& groups, int analyze, 
             }
         }
     }
+    // Some final data tracking on the last evaluation
     if(Global::update==Global::updatesPL->get()){
         double bestest = -1000000000;
         auto bestBrain = groups[groupName]->population[0]->brains["brain::"];
@@ -376,6 +377,7 @@ std::vector<ForageWorld::Resource> ForageWorld::genTaskWorld(std::vector<int> po
         return world;
 }
 
+// Get what an agent sees in the current world
 std::vector<int> ForageWorld::getPerception(const int pos, const std::vector<ForageWorld::Resource>& world, const int agentOrient, const std::vector<int> &positions){
     std::vector<int> perception;
     //(0, 0 is top left) 
@@ -418,8 +420,6 @@ std::vector<int> ForageWorld::getPerception(const int pos, const std::vector<For
             break;    
     }
     //agents inputs from front and sides
-    //remove pos_front2 for now
-    //for (const auto& v : {pos_front, pos_front2, pos_right, pos_left}) {
     for (const auto& v : {pos_front, pos_front2, pos_right, pos_left}) {
         if(!isOutOfBounds(v[0], v[1], xDim, yDim)){
             int p = v[1] * xDim + v[0];
@@ -444,6 +444,7 @@ std::vector<int> ForageWorld::getPerception(const int pos, const std::vector<For
     return perception;
 }
 
+// Tracker lets us do stats
 ForageWorld::Tracker ForageWorld::createTracker() {
     ForageWorld::Tracker t;
 
@@ -462,11 +463,11 @@ ForageWorld::Tracker ForageWorld::createTracker() {
     return t;
 };
 
+// Main loop to evaluate a swarm on a world
 ForageWorld::Tracker ForageWorld::forageTask(const std::vector<std::tuple<std::shared_ptr<AbstractBrain>, std::string>> brainInfo, std::vector<ForageWorld::Resource> &world, std::vector<int> &positions, std::vector<int> &orientations, bool printing){
     //tracker will store some stats
     ForageWorld::Tracker tracker = createTracker();
 
-    //Main foraging loop for a single swarm
     for (size_t j = 0; j < timesteps; j++){
         //Every timestep, make a shuffled list of agents to be evaluated
         std::vector<int> waitingAgents(numAgents);
@@ -525,7 +526,7 @@ ForageWorld::Tracker ForageWorld::forageTask(const std::vector<std::tuple<std::s
 
                     double s = calcTask(taskr, world[curr_agent_pos]);
                     tracker.data["score"] += s;
-                    //If successful (score > 0) 
+                    //If successful (i.e. score > 0) 
                     if(s > 0){
                         //Set current position to empty
                         world[curr_agent_pos] = createResource(empty_val);
@@ -543,7 +544,7 @@ ForageWorld::Tracker ForageWorld::forageTask(const std::vector<std::tuple<std::s
     return tracker;
 }
 
-//Currently calcs agents desired move
+// calcs agent's desired move
 int ForageWorld::calcAgentMove(const int pos, const int orient) {
     int x = pos % xDim;  // Get current x-coordinate
     int y = pos / xDim;  // Get current y-coordinate
@@ -571,7 +572,7 @@ int ForageWorld::calcAgentMove(const int pos, const int orient) {
     }
 }
 
-//Currently calcs agents desired orientation change
+// calcs agent's desired orientation change
 int ForageWorld::calcAgentRotate(const int curr_orient, const int lMotor, const int rMotor) {
     int orient = curr_orient;
     if(lMotor > rMotor){
@@ -590,7 +591,7 @@ int ForageWorld::calcAgentRotate(const int curr_orient, const int lMotor, const 
     return orient;
 }
 
-
+// Possibly change how many of each brain a swarm uses
 int ForageWorld::mutateComp(int oldAgent1Num){
     //if mutate
     if(Random::getDouble(0.0, 1.0) < mRate){
@@ -616,6 +617,7 @@ void ForageWorld::spawnResource(std::vector<ForageWorld::Resource> &world, const
     world[pos] = r;
 }
 
+// Show a single brain more in depth
 void ForageWorld::showBestTaskBrain(std::shared_ptr<AbstractBrain> brain, std::shared_ptr<AbstractBrain> brain2, int bestNumAgent1){
     std::vector<int> positions = genAgentPositions();
     std::vector<int> orientations = genAgentOrientations();
