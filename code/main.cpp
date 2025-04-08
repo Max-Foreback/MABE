@@ -149,8 +149,9 @@ int main(int argc, const char *argv[]) {
   std::cout << "\nRunning World " << world->worldTypePL->get() << "\n";
 
   std::shared_ptr<ParametersTable> PT;
-  auto groups = constructAllGroupsFrom(world, PT);
 
+  auto groups = constructAllGroupsFrom(world, PT);
+  std::cout<<"here4";
   Global::update = 0;
 
 
@@ -158,12 +159,14 @@ int main(int argc, const char *argv[]) {
     ////////////////////////////////////////////////////////////////////////////////////
     // run mode - evolution loop
     ////////////////////////////////////////////////////////////////////////////////////
+
     std::cout << "\n  You are running MABE in run mode."
               << "\n"
               << "\n";
 
     // in run mode we evolve organsims
     auto done = false;
+
     while ((!done) && (!userExitFlag)) { //! groups[defaultGroup]->archivist->finished) {
       world->evaluate(groups, false, false,
                       AbstractWorld::debugPL->get()); // evaluate each organism

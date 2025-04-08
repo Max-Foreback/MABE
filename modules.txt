@@ -19,8 +19,8 @@
 
 % Brain
   - Wire
-  * CGP
   + Markov
+  * CGP
   - LSTM
   - BiLog
   - ANN
@@ -31,7 +31,7 @@
 % Optimizer
   - Islands
   - Lexicase
-  + Roulette
   - Tournament
+  + Roulette
   * Forage
 

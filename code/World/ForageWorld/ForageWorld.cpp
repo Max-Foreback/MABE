@@ -58,7 +58,6 @@ shared_ptr<ParameterLink<double>> ForageWorld::r1replaceRatePL =
     "Proportion of replaced rewards that will be resource 1");
 
 ForageWorld::ForageWorld(shared_ptr<ParametersTable> PT) : AbstractWorld(PT) {
-    
     //localize a parameter value for faster access
     evaluationsPerGeneration = evaluationsPerGenerationPL->get(PT);
     xDim = xDimPL->get(PT);
@@ -81,7 +80,7 @@ ForageWorld::ForageWorld(shared_ptr<ParametersTable> PT) : AbstractWorld(PT) {
     else{
         initialAgent1 = initialAgent1PL->get(PT);
     }
-    
+
     
     // popFileColumns tell MABE what data should be saved to pop.csv files
     auto myPT = Parameters::root->getTable("brain::");
@@ -103,6 +102,7 @@ ForageWorld::ForageWorld(shared_ptr<ParametersTable> PT) : AbstractWorld(PT) {
     
     popFileColumns.push_back(brain2Name + "_Resource" + std::to_string(taskTwoID) + "_Completed");
     popFileColumns.push_back(brain2Name + "_Resource" + std::to_string(taskTwoID) + "_Attempted");
+
 }
 
 //Sensors can have these values for a square on the grid
@@ -112,6 +112,7 @@ const int ID_XOR = 1;
 const int ID_linReg = 2;
 const int ID_AND = 3;
 const int ID_FREE = 4;
+const int ID_TEST = 5;
 const int empty_val = 0;
 //Do not change vals, math for roatating depends on them
 const int up = 0;
@@ -157,9 +158,36 @@ void printWorld(const std::vector<int> positions, const std::vector<ForageWorld:
     std::cout << "\n\n";
 }
 
+int getRandomAdjacentPosition(int pos, int xDim, int yDim, std::vector<ForageWorld::Resource> &world, const std::vector<int> &positions) {
+    int x = pos % xDim;  
+    int y = pos / xDim;  
+
+    // Array of possible directions: {up, down, left, right}
+    int dx[] = {0, 0, -1, 1};  
+    int dy[] = {-1, 1, 0, 0};  
+
+
+    int direction = rand() % 4;
+
+    int newX = x + dx[direction];
+    int newY = y + dy[direction];
+
+    // Check if the new position is within bounds
+    if (newX >= 0 && newX < xDim && newY >= 0 && newY < yDim && std::find(positions.begin(), positions.end(), pos) == positions.end() && world[pos].kind == empty_val) {
+        // Convert the new (x, y) position back to a single integer
+        return newY * xDim + newX;
+    } else {
+        // If the new position is out of bounds, try again
+        return getRandomAdjacentPosition(pos, xDim, yDim, world, positions);
+    }
+}
+
 // create a resource with the associated resource ID
 ForageWorld::Resource createResource(int k){
+
     ForageWorld::Resource r;
+    ForageWorld::ComplexResource r_complex;
+
     r.kind = k;
     switch(k){
         //XOR
@@ -181,20 +209,28 @@ ForageWorld::Resource createResource(int k){
             r.f1 = 0;
             r.f2 = 0;
             break;
-        // no resource
+        case ID_TEST:
+            // ForageWorld::ComplexResource* r_complex=dynamic_cast<ForageWorld::ComplexResource*>(r);
+            r_complex.kind = k;
+            r_complex.f1 = Random::getInt(0, 1);
+            r_complex.f2 = Random::getInt(0, 1);
+            r_complex.f3 = Random::getInt(0, 1);
+            r_complex.f4 = Random::getInt(0, 1);
+            return r_complex;
+            break;
         case empty_val:
             r.f1 = 0;
             r.f2 = 0;
             break;
         default:
             throw std::invalid_argument("Unknown resource type on creation: " + std::to_string(k));
-            break;
+            break; 
     }
     return r;
 }
 
 // Calculate the reward or penalty given a task and a response from an agent
-double ForageWorld::calcTask(int out1, ForageWorld::Resource r){
+double ForageWorld::calcTask(int out1, ForageWorld::Resource r, int pos){
     switch(r.kind){
         case ID_XOR:{
             return (out1 == r.f1 ^ r.f2) ? taskReward : taskPenalty;
@@ -212,6 +248,34 @@ double ForageWorld::calcTask(int out1, ForageWorld::Resource r){
             }break;
         case ID_FREE:{
             return taskReward;
+            }break;
+        case ID_TEST:{
+            std::unique_ptr<ForageWorld::Resource> r_ptr = std::make_unique<ForageWorld::Resource>(r);
+            ForageWorld::ComplexResource* r_complex =dynamic_cast<ForageWorld::ComplexResource*>(r_ptr.get());
+            if(r_complex->op==pos){
+                if (out1 == (r_complex->f1 & r_complex->f2)) {
+                    if (r_complex->half_solved_xor) {
+                        return taskReward*2;
+                    } else {
+                        r_complex->half_solved_and = true;
+                        return 0;
+                    }
+                } else {
+                    return 0;
+                }
+            }
+            else{
+                if (out1 == (r_complex->f3 ^ r_complex->f4)) {
+                    if (r_complex->half_solved_and) {
+                        return taskReward*2;
+                    } else {
+                        r_complex->half_solved_xor = true;
+                        return 0;
+                    }
+                } else {
+                    return 0;
+            }
+        }
             }break;
         case empty_val:{
             return 0;
@@ -246,7 +310,9 @@ std::vector<bool> ForageWorld::binarizeInputs(const std::vector<int>& agentPerce
 // the evaluate function gets called every generation. evaluate should set values on organisms datamaps
 // that will be used by other parts of MABE for things like reproduction and archiving
 auto ForageWorld::evaluate(map<string, shared_ptr<Group>>& groups, int analyze, int visualize, int debug) -> void {
+
     int popSize = groups[groupName]->population.size(); 
+
 
     //a set of starting conditions for this generation's evaluations
     std::vector<std::vector<int>> initPositionsAll;
@@ -254,6 +320,8 @@ auto ForageWorld::evaluate(map<string, shared_ptr<Group>>& groups, int analyze, 
     std::vector<std::vector<ForageWorld::Resource>> initWorldAll;
 
     for(int z = 0; z < evaluationsPerGeneration; z++){
+
+
         //Every agent in a swarm has a position, orientation, and brain, with matching indicies
         std::vector<int> initPositions = genAgentPositions();
         std::vector<int> initOrientations = genAgentOrientations();
@@ -356,6 +424,7 @@ std::vector<int> ForageWorld::genAgentOrientations(){
 }
 
 std::vector<ForageWorld::Resource> ForageWorld::genTaskWorld(std::vector<int> positions){
+
         int size = xDim*yDim;
         std::vector<ForageWorld::Resource> world(size);
 
@@ -365,12 +434,14 @@ std::vector<ForageWorld::Resource> ForageWorld::genTaskWorld(std::vector<int> po
         for(int i = 0; i < numResource1; i++){
             world[i] = createResource(taskOneID);
         }
+
         for(int j = 0; j < numResource2; j++){
             world[numResource1 + j] = createResource(taskTwoID);
         }
-        
+
         //Make the rest empty 
         std::fill(world.begin() + (numResource1 + numResource2), world.end(), createResource(empty_val));
+
         //Shuffle to make random order
         std::shuffle(world.begin(), world.end(), Random::getCommonGenerator());
         
@@ -487,20 +558,19 @@ ForageWorld::Tracker ForageWorld::forageTask(const std::vector<std::tuple<std::s
             //kind front, kind front2, kind right, kind left, kind curr, in1, in2
             std::vector<int> agentPerception = getPerception(curr_agent_pos, world, curr_agent_orient, positions);
             //4 sensors, 2 binary resource IDs each. Wall in front sensor
-            std::vector<bool> sensorVals = binarizeInputs(agentPerception);
 
             //Sensor inputs 
-            for(int i = 0; i < sensorVals.size(); i++){
-                if(sensorVals[i]){
-                    brain->setInput(i, 1);
+            for(int i = 0; i < agentPerception.size(); i++){
+                if(agentPerception[i]){
+                    brain->setInput(i, agentPerception[i]);
                 }
                 else{
-                    brain->setInput(i, 0);
+                    brain->setInput(i, agentPerception[i]);
                 }
             }
             //Task inputs
-            brain->setInput(sensorVals.size(), agentPerception[5]);
-            brain->setInput(sensorVals.size() + 1, agentPerception[6]);
+            brain->setInput(agentPerception.size(), agentPerception[5]);
+            brain->setInput(agentPerception.size() + 1, agentPerception[6]);
 
             // run a brain update (i.e. ask the brain to convert it's inputs into outputs)
             brain->update();
@@ -524,7 +594,7 @@ ForageWorld::Tracker ForageWorld::forageTask(const std::vector<std::tuple<std::s
                         tracker.data[brainName + "_Resource" + std::to_string(r.kind) + "_Attempted"] += 1;
                     }
 
-                    double s = calcTask(taskr, world[curr_agent_pos]);
+                    double s = calcTask(taskr, world[curr_agent_pos], curr_agent_pos);
                     tracker.data["score"] += s;
                     //If successful (i.e. score > 0) 
                     if(s > 0){
@@ -608,13 +678,23 @@ int ForageWorld::mutateComp(int oldAgent1Num){
 void ForageWorld::spawnResource(std::vector<ForageWorld::Resource> &world, const std::vector<int> &positions){
     double sample = Random::getDouble(0.0, 1.0);
     int choice = (sample < r1replaceRate) ? taskOneID : taskTwoID; 
-    ForageWorld::Resource r = createResource(choice);
+    std::unique_ptr<ForageWorld::Resource> r_ptr = std::make_unique<ForageWorld::Resource>(createResource(choice));
     int pos = Random::getInt(0, xDim*yDim - 1);
     //make sure generated position is not where an agent is currently, and also the position is empty
     while(std::find(positions.begin(), positions.end(), pos) != positions.end() || world[pos].kind != empty_val){
         pos = Random::getInt(0, xDim*yDim - 1);
     }
-    world[pos] = r;
+    if(r_ptr->kind==ID_TEST){
+        ForageWorld::Resource * r=r_ptr.get();
+        ForageWorld::ComplexResource* r_complex =dynamic_cast<ForageWorld::ComplexResource*>(r);
+        r_complex->op=pos;
+        
+        int adjPos=getRandomAdjacentPosition(pos,xDim,yDim,world, positions);
+        world[adjPos]=*r_ptr;
+
+            
+    }
+    world[pos] = *r_ptr;
 }
 
 // Show a single brain more in depth

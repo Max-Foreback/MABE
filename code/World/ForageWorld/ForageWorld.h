@@ -72,6 +72,16 @@ public:
         int kind;
         int f1;
         int f2;
+        virtual ~Resource()=default;
+    };
+
+    class ComplexResource : public Resource {
+        public:
+            int op;
+            int f3;            // Extra field f3 and f4 inputs for second resource
+            int f4;           
+            bool half_solved_and;  // Extra field to indicate if it's half solved
+            bool half_solved_xor;
     };
 
     class Tracker{
@@ -85,7 +95,7 @@ public:
     virtual auto evaluate(map<string, shared_ptr<Group>>& /*groups*/, int /*analyze*/, int /*visualize*/, int /*debug*/) -> void override;
     std::vector<int> genAgentPositions();
     std::vector<int> genAgentOrientations();
-    double calcTask(int out1, ForageWorld::Resource r);
+    double calcTask(int out1, ForageWorld::Resource r, int pos);
     std::vector<Resource> genTaskWorld(std::vector<int> positions);
     std::vector<int> getPerception(const int pos, const std::vector<Resource>& world, const int agentOrient, const std::vector<int> &positions);
     Tracker forageTask(const std::vector<std::tuple<std::shared_ptr<AbstractBrain>, std::string>> brainInfo, std::vector<Resource> &world, std::vector<int> &positions, std::vector<int> &orientations, bool printing);
