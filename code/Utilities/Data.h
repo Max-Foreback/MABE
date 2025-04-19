@@ -91,6 +91,10 @@ public:
 
   // find key in this data map and return type (NONE = not found)
   inline dataMapType findKeyInData(const std::string &key, bool printType = false) {
+    for (const auto& pair : inUse) {
+      // std::cout << "Key: " << pair.first << std::endl;
+      // std::cout<< "Value: " << pair.second << std::endl;
+  }
     if (printType) {
       std::cout << key << "is of type " << inUse[key] << std::endl;
     }

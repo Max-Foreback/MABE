@@ -36,10 +36,12 @@ public:
     static shared_ptr<ParameterLink<double>> compMutationRatePL;
     static shared_ptr<ParameterLink<int>> taskOneIDPL;
     static shared_ptr<ParameterLink<int>> taskTwoIDPL;
+    static shared_ptr<ParameterLink<int>> taskThreeIDPL;
     static shared_ptr<ParameterLink<int>> initialAgent1PL;
     static shared_ptr<ParameterLink<int>> taskRewardPL;
     static shared_ptr<ParameterLink<int>> taskPenaltyPL;
     static shared_ptr<ParameterLink<double>> r1replaceRatePL;
+    static shared_ptr<ParameterLink<double>> r2replaceRatePL;
 
     // a local variable used for faster access to the ParameterLink value
     int evaluationsPerGeneration;
@@ -50,10 +52,12 @@ public:
     int numAgents;
     int taskOneID;
     int taskTwoID;
+    int taskThreeID;
     int initialAgent1;
     int taskReward;
     int taskPenalty;
     double r1replaceRate;
+    double r2replaceRate;
     
     std::vector<double> rProp;
     double mRate;
@@ -82,6 +86,9 @@ public:
             int f4;           
             bool half_solved_and;  // Extra field to indicate if it's half solved
             bool half_solved_xor;
+            void setPos(int pos){
+                op=pos;
+            }
     };
 
     class Tracker{

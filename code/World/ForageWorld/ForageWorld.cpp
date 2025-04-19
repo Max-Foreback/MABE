@@ -26,7 +26,7 @@ shared_ptr<ParameterLink<int>> ForageWorld::numAgentsPL =
     "Number of agents per swarm");
 
 shared_ptr<ParameterLink<std::string>> ForageWorld::resourcePropsPL =
-    Parameters::register_parameter("WORLD_Forage-resourceProp", (std::string) "0.4,0.4",
+    Parameters::register_parameter("WORLD_Forage-resourceProp", (std::string) "0.3,0.3,0.2",
     "Proportion of world that is resource at index.");
 
 shared_ptr<ParameterLink<double>> ForageWorld::compMutationRatePL =
@@ -42,8 +42,12 @@ shared_ptr<ParameterLink<int>> ForageWorld::taskOneIDPL =
     "ID of task1, defaults to 1 (XOR)");
 
 shared_ptr<ParameterLink<int>> ForageWorld::taskTwoIDPL =
-    Parameters::register_parameter("WORLD_Forage-taskTwoID", 2,
-    "ID of task2, defaults to 2 (Symbolic Regression)");
+    Parameters::register_parameter("WORLD_Forage-taskTwoID", 3,
+    "ID of task3, defaults to 3 (AND)");
+
+shared_ptr<ParameterLink<int>> ForageWorld::taskThreeIDPL =
+    Parameters::register_parameter("WORLD_Forage-taskThreeID", 5,
+    "ID of task5, defaults to 5 (complex)");
 
 shared_ptr<ParameterLink<int>> ForageWorld::taskRewardPL =
     Parameters::register_parameter("WORLD_Forage-taskReward", 1,
@@ -54,8 +58,12 @@ shared_ptr<ParameterLink<int>> ForageWorld::taskPenaltyPL =
     "Reward for attempting to solve a task, and failing");
 
 shared_ptr<ParameterLink<double>> ForageWorld::r1replaceRatePL =
-    Parameters::register_parameter("WORLD_Forage-r1replaceRate", .5,
+    Parameters::register_parameter("WORLD_Forage-r1replaceRate", .35,
     "Proportion of replaced rewards that will be resource 1");
+
+shared_ptr<ParameterLink<double>> ForageWorld::r2replaceRatePL =
+    Parameters::register_parameter("WORLD_Forage-r2replaceRate", .35,
+    "Proportion of replaced rewards that will be resource 2");
 
 ForageWorld::ForageWorld(shared_ptr<ParametersTable> PT) : AbstractWorld(PT) {
     //localize a parameter value for faster access
@@ -70,9 +78,11 @@ ForageWorld::ForageWorld(shared_ptr<ParametersTable> PT) : AbstractWorld(PT) {
     mRate = compMutationRatePL->get(PT);
     taskOneID = taskOneIDPL->get(PT);
     taskTwoID = taskTwoIDPL->get(PT);
+    taskThreeID = taskThreeIDPL->get(PT);
     taskReward = taskRewardPL->get(PT);
     taskPenalty = taskPenaltyPL->get(PT);
     r1replaceRate = r1replaceRatePL->get(PT);
+    r2replaceRate = r2replaceRatePL->get(PT);
     //if not specified, set to half the swarm
     if (initialAgent1PL->get(PT) == -1){
         initialAgent1 = static_cast<int>(numAgents/2);
@@ -97,11 +107,17 @@ ForageWorld::ForageWorld(shared_ptr<ParametersTable> PT) : AbstractWorld(PT) {
     popFileColumns.push_back(brain1Name + "_Resource" + std::to_string(taskTwoID) + "_Completed");
     popFileColumns.push_back(brain1Name + "_Resource" + std::to_string(taskTwoID) + "_Attempted");
 
+    popFileColumns.push_back(brain1Name + "_Resource" + std::to_string(taskThreeID) + "_Completed");
+    popFileColumns.push_back(brain1Name + "_Resource" + std::to_string(taskThreeID) + "_Attempted");
+
     popFileColumns.push_back(brain2Name + "_Resource" + std::to_string(taskOneID) + "_Completed");
     popFileColumns.push_back(brain2Name + "_Resource" + std::to_string(taskOneID) + "_Attempted");
     
     popFileColumns.push_back(brain2Name + "_Resource" + std::to_string(taskTwoID) + "_Completed");
     popFileColumns.push_back(brain2Name + "_Resource" + std::to_string(taskTwoID) + "_Attempted");
+
+    popFileColumns.push_back(brain2Name + "_Resource" + std::to_string(taskThreeID) + "_Completed");
+    popFileColumns.push_back(brain2Name + "_Resource" + std::to_string(taskThreeID) + "_Attempted");
 
 }
 
@@ -162,12 +178,16 @@ int getRandomAdjacentPosition(int pos, int xDim, int yDim, std::vector<ForageWor
     int x = pos % xDim;  
     int y = pos / xDim;  
 
+
+
     // Array of possible directions: {up, down, left, right}
     int dx[] = {0, 0, -1, 1};  
     int dy[] = {-1, 1, 0, 0};  
 
 
     int direction = rand() % 4;
+
+
 
     int newX = x + dx[direction];
     int newY = y + dy[direction];
@@ -177,6 +197,7 @@ int getRandomAdjacentPosition(int pos, int xDim, int yDim, std::vector<ForageWor
         // Convert the new (x, y) position back to a single integer
         return newY * xDim + newX;
     } else {
+
         // If the new position is out of bounds, try again
         return getRandomAdjacentPosition(pos, xDim, yDim, world, positions);
     }
@@ -231,6 +252,7 @@ ForageWorld::Resource createResource(int k){
 
 // Calculate the reward or penalty given a task and a response from an agent
 double ForageWorld::calcTask(int out1, ForageWorld::Resource r, int pos){
+
     switch(r.kind){
         case ID_XOR:{
             return (out1 == r.f1 ^ r.f2) ? taskReward : taskPenalty;
@@ -250,8 +272,7 @@ double ForageWorld::calcTask(int out1, ForageWorld::Resource r, int pos){
             return taskReward;
             }break;
         case ID_TEST:{
-            std::unique_ptr<ForageWorld::Resource> r_ptr = std::make_unique<ForageWorld::Resource>(r);
-            ForageWorld::ComplexResource* r_complex =dynamic_cast<ForageWorld::ComplexResource*>(r_ptr.get());
+            auto* r_complex = static_cast<ForageWorld::ComplexResource*>(&r);
             if(r_complex->op==pos){
                 if (out1 == (r_complex->f1 & r_complex->f2)) {
                     if (r_complex->half_solved_xor) {
@@ -372,7 +393,6 @@ auto ForageWorld::evaluate(map<string, shared_ptr<Group>>& groups, int analyze, 
             std::vector<ForageWorld::Resource> world = initWorldAll[j];
             
             ForageWorld::Tracker tracker = forageTask(brainInfo, world, positions, orientations, false);
-            
             for (const auto& item : tracker.data) {
                 // Append key-value pairs to the new map
                 org->dataMap.append(item.first, item.second);
@@ -430,6 +450,7 @@ std::vector<ForageWorld::Resource> ForageWorld::genTaskWorld(std::vector<int> po
 
         int numResource1 = static_cast<int>(rProp[0] * size);
         int numResource2 = static_cast<int>(rProp[1] * size);
+        int numResource3 = static_cast<int>(rProp[2] * size);
 
         for(int i = 0; i < numResource1; i++){
             world[i] = createResource(taskOneID);
@@ -437,6 +458,9 @@ std::vector<ForageWorld::Resource> ForageWorld::genTaskWorld(std::vector<int> po
 
         for(int j = 0; j < numResource2; j++){
             world[numResource1 + j] = createResource(taskTwoID);
+        }
+        for(int k = 0; k < numResource3; k++){
+            world[numResource1 + numResource2 + k] = createResource(taskThreeID);
         }
 
         //Make the rest empty 
@@ -526,11 +550,17 @@ ForageWorld::Tracker ForageWorld::createTracker() {
     t.data[brain1Name + "_Resource" + std::to_string(taskTwoID) + "_Completed"] = 0;
     t.data[brain1Name + "_Resource" + std::to_string(taskTwoID) + "_Attempted"] = 0;
 
+    t.data[brain1Name + "_Resource" + std::to_string(taskThreeID) + "_Completed"] = 0;
+    t.data[brain1Name + "_Resource" + std::to_string(taskThreeID) + "_Attempted"] = 0;
+
     t.data[brain2Name + "_Resource" + std::to_string(taskOneID) + "_Completed"] = 0;
     t.data[brain2Name + "_Resource" + std::to_string(taskOneID) + "_Attempted"] = 0;
 
     t.data[brain2Name + "_Resource" + std::to_string(taskTwoID) + "_Completed"] = 0;
     t.data[brain2Name + "_Resource" + std::to_string(taskTwoID) + "_Attempted"] = 0;
+
+    t.data[brain2Name + "_Resource" + std::to_string(taskThreeID) + "_Completed"] = 0;
+    t.data[brain2Name + "_Resource" + std::to_string(taskThreeID) + "_Attempted"] = 0;
     return t;
 };
 
@@ -540,6 +570,7 @@ ForageWorld::Tracker ForageWorld::forageTask(const std::vector<std::tuple<std::s
     ForageWorld::Tracker tracker = createTracker();
 
     for (size_t j = 0; j < timesteps; j++){
+        
         //Every timestep, make a shuffled list of agents to be evaluated
         std::vector<int> waitingAgents(numAgents);
         std::iota(waitingAgents.begin(), waitingAgents.end(), 0);           
@@ -568,6 +599,7 @@ ForageWorld::Tracker ForageWorld::forageTask(const std::vector<std::tuple<std::s
                     brain->setInput(i, agentPerception[i]);
                 }
             }
+
             //Task inputs
             brain->setInput(agentPerception.size(), agentPerception[5]);
             brain->setInput(agentPerception.size() + 1, agentPerception[6]);
@@ -585,11 +617,14 @@ ForageWorld::Tracker ForageWorld::forageTask(const std::vector<std::tuple<std::s
             // move if going forward, try to solve task if staying still or rotating 
             if(move1 == 1 && move2 == 1){
                 positions[curr_agent_ID] = calcAgentMove(curr_agent_pos, curr_agent_orient);
+
             }
             else{
                 orientations[curr_agent_ID] = calcAgentRotate(curr_agent_orient, move1, move2);
+
                 //Try to solve task
                 if(!rejectSolve){
+
                     if(r.kind != empty_val){
                         tracker.data[brainName + "_Resource" + std::to_string(r.kind) + "_Attempted"] += 1;
                     }
@@ -598,11 +633,14 @@ ForageWorld::Tracker ForageWorld::forageTask(const std::vector<std::tuple<std::s
                     tracker.data["score"] += s;
                     //If successful (i.e. score > 0) 
                     if(s > 0){
+    
                         //Set current position to empty
                         world[curr_agent_pos] = createResource(empty_val);
                         //Create new random resource according to r1replaceRate
                         spawnResource(world, positions);
+
                         tracker.data[brainName + "_Resource" + std::to_string(r.kind) + "_Completed"] += 1;
+     
                     }
                 }
             }
@@ -610,7 +648,9 @@ ForageWorld::Tracker ForageWorld::forageTask(const std::vector<std::tuple<std::s
         if(printing){
             printWorld(positions, world, xDim, yDim, orientations);
         }
+
     }
+
     return tracker;
 }
 
@@ -677,23 +717,39 @@ int ForageWorld::mutateComp(int oldAgent1Num){
 
 void ForageWorld::spawnResource(std::vector<ForageWorld::Resource> &world, const std::vector<int> &positions){
     double sample = Random::getDouble(0.0, 1.0);
-    int choice = (sample < r1replaceRate) ? taskOneID : taskTwoID; 
+
+    int choice = 0; 
+    if (sample < r1replaceRate) {
+        // std::cout<<"roshi"<<std::endl;
+        choice = taskOneID;
+    } else if (sample < r1replaceRate + r2replaceRate) {
+        // std::cout<<"goku"<<std::endl;
+        choice = taskTwoID;
+    } else {
+        // std::cout<<"gohan"<<std::endl;
+        choice = taskThreeID;
+    }
     std::unique_ptr<ForageWorld::Resource> r_ptr = std::make_unique<ForageWorld::Resource>(createResource(choice));
     int pos = Random::getInt(0, xDim*yDim - 1);
+
     //make sure generated position is not where an agent is currently, and also the position is empty
     while(std::find(positions.begin(), positions.end(), pos) != positions.end() || world[pos].kind != empty_val){
         pos = Random::getInt(0, xDim*yDim - 1);
     }
+
     if(r_ptr->kind==ID_TEST){
         ForageWorld::Resource * r=r_ptr.get();
-        ForageWorld::ComplexResource* r_complex =dynamic_cast<ForageWorld::ComplexResource*>(r);
-        r_complex->op=pos;
-        
+        ForageWorld::ComplexResource* r_complex =static_cast<ForageWorld::ComplexResource*>(r);
+
+        r_complex->setPos(pos);
+
+
         int adjPos=getRandomAdjacentPosition(pos,xDim,yDim,world, positions);
         world[adjPos]=*r_ptr;
 
             
     }
+
     world[pos] = *r_ptr;
 }
 
